@@ -5,8 +5,8 @@ Eclectary is the main marketplace application. Feedlog is included as an indepen
 ## Repository setup
 
 ```bash
-git clone https://github.com/TechyChaosGremlin/Eclectary-Platform.git
-cd Eclectary-Platform
+git clone https://github.com/Eclectary/eclectary-platform.git
+cd eclectary-platform
 git submodule update --init --recursive
 ```
 
