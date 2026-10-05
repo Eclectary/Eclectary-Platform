@@ -16,6 +16,8 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert_equal "brand_new@example.com", body["email"]
     assert_not body.key?("password_digest")
+    decoded_token = JsonWebToken.decode(body["token"])
+    assert_equal User.find_by!(email: "brand_new@example.com").id, decoded_token["user_id"]
   end
 
   test "registration fails with duplicate email" do

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 import Button from "../components/Button";
 import heroImage from "../assets/images/herobanner2.png";
@@ -23,55 +24,58 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [errors, setErrors] = useState<RegisterErrors>({});
+  const { register } = useAuth();
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
 
-    const nextErrors: RegisterErrors = {};
-    const normalizedName = fullName.trim();
-    const normalizedEmail = email.trim();
+  const nextErrors: RegisterErrors = {};
+  const normalizedName = fullName.trim();
+  const normalizedEmail = email.trim();
 
-    if (!normalizedName) {
-      nextErrors.fullName = "Enter your full name.";
-    }
+  if (!normalizedName) {
+    nextErrors.fullName = "Enter your full name.";
+  }
 
-    if (!normalizedEmail) {
-      nextErrors.email = "Enter your email address.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      nextErrors.email = "Enter a valid email address.";
-    }
+  if (!normalizedEmail) {
+    nextErrors.email = "Enter your email address.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    nextErrors.email = "Enter a valid email address.";
+  }
 
-    if (!password) {
-      nextErrors.password = "Enter your password.";
-    } else if (password.length < 8) {
-      nextErrors.password = "Use at least 8 characters.";
-    }
+  if (!password) {
+    nextErrors.password = "Enter your password.";
+  } else if (password.length < 8) {
+    nextErrors.password = "Use at least 8 characters.";
+  }
 
-    if (!confirmPassword) {
-      nextErrors.confirmPassword = "Confirm your password.";
-    } else if (password !== confirmPassword) {
-      nextErrors.confirmPassword = "Passwords do not match.";
-    }
+  if (!confirmPassword) {
+    nextErrors.confirmPassword = "Confirm your password.";
+  } else if (password !== confirmPassword) {
+    nextErrors.confirmPassword = "Passwords do not match.";
+  }
 
-    if (!agreeToTerms) {
-      nextErrors.agreeToTerms = "Please agree to the terms to continue.";
-    }
+  if (!agreeToTerms) {
+    nextErrors.agreeToTerms = "Please agree to the terms to continue.";
+  }
 
-    setErrors(nextErrors);
+  setErrors(nextErrors);
 
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
+  if (Object.keys(nextErrors).length > 0) {
+    return;
+  }
 
-    const authPayload = {
-      email: normalizedEmail,
-      fullName: normalizedName,
-    };
+  try {
+    await register(normalizedEmail, password, confirmPassword);
 
-    window.localStorage.setItem("eclectary-auth", JSON.stringify(authPayload));
     window.dispatchEvent(new Event("eclectary-auth-change"));
     navigate("/");
+  } catch {
+    setErrors({
+      email: "Unable to create your account. Please try again.",
+    });
   }
+}
 
   return (
     <main className="login-page">

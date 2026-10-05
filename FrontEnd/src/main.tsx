@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import App from "./App";
 import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
-
+import { AuthProvider } from "./context/AuthContext";
 import "./styles/global.css";
 
 ReactDOM.createRoot(
@@ -14,9 +14,11 @@ ReactDOM.createRoot(
   <React.StrictMode>
     <CartProvider>
       <WishlistProvider>
-        <App />
-        <SpeedInsights />
-        <Analytics />
+        <AuthProvider>
+          <App />
+          <SpeedInsights />
+          <Analytics />
+        </AuthProvider>
       </WishlistProvider>
     </CartProvider>
   </React.StrictMode>

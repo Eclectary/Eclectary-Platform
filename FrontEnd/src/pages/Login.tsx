@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import Button from "../components/Button";
 import heroImage from "../assets/images/herobanner2.png";
 import "../styles/login.css";
+
 
 type LoginErrors = {
   email?: string;
@@ -18,34 +20,47 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<LoginErrors>({});
+  const { login } = useAuth();
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
 
-    const nextErrors: LoginErrors = {};
-    const normalizedEmail = email.trim();
+  const nextErrors: LoginErrors = {};
+  const normalizedEmail = email.trim();
 
-    if (!normalizedEmail) {
-      nextErrors.email = "Enter your email address.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      nextErrors.email = "Enter a valid email address.";
+  if (!normalizedEmail) {
+    nextErrors.email = "Enter your email address.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    nextErrors.email = "Enter a valid email address.";
+  }
+
+  if (!password) {
+    nextErrors.password = "Enter your password.";
+  }
+
+  setErrors(nextErrors);
+
+  if (Object.keys(nextErrors).length > 0) {
+    return;
+  }
+
+  try {
+    await login(normalizedEmail, password);
+
+    if (rememberMe) {
+      localStorage.setItem("eclectary-auth", "true");
+    } else {
+      sessionStorage.setItem("eclectary-auth", "true");
     }
 
-    if (!password) {
-      nextErrors.password = "Enter your password.";
-    }
-
-    setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-
-    const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem("eclectary-auth", JSON.stringify({ email: normalizedEmail }));
     window.dispatchEvent(new Event("eclectary-auth-change"));
     navigate("/");
+  } catch {
+    setErrors({
+      email: "Invalid email or password.",
+    });
   }
+}
 
   return (
     <main className="login-page">

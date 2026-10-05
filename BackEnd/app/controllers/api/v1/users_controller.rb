@@ -15,7 +15,9 @@ class Api::V1::UsersController < Api::V1::BaseController
     user = User.new(user_params)
 
     if user.save
-      render json: UserSerializer.new(user).as_json, status: :created
+      render json: UserSerializer.new(user).as_json.merge(
+        token: JsonWebToken.encode(user_id: user.id)
+      ), status: :created
     else
       render json: {
         errors: user.errors.full_messages
