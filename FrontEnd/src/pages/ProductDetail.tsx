@@ -47,15 +47,21 @@ function ProductDetailContent({ productId }: { productId?: string }) {
 
   const gallery = product.images && product.images.length > 0
     ? product.images
-    : [product.image, product.image, product.image];
+    : product.image
+      ? [product.image, product.image, product.image]
+      : [];
 
   const handleAddToCart = () => addToCart(product, quantity);
   const handleToggleWishlist = () => toggleWishlist(product.id);
   const productType = product.collection ?? 'handcrafted item';
   // Temporary display value until review counts are supplied with product data.
   const reviewCount = product.reviewCount ?? 24;
-  const { filled, empty } = getStarSegments(product.rating);
-  const starDisplay = `${'★'.repeat(filled)}${'☆'.repeat(empty)}`;
+  const rating = product.rating;
+  const ratingSegments = rating === undefined ? undefined : getStarSegments(rating);
+  const starDisplay = ratingSegments
+    ? `${'★'.repeat(ratingSegments.filled)}${'☆'.repeat(ratingSegments.empty)}`
+    : '';
+  const mainImage = selectedImage || product.image;
 
   return (
     <article className="product-detail">
@@ -80,23 +86,29 @@ function ProductDetailContent({ productId }: { productId?: string }) {
           </div>
 
           <div className="product-detail__main-image-wrap">
-            <img
-              className="product-detail__main-image"
-              src={selectedImage || product.image}
-              alt={product.title}
-            />
+            {mainImage && (
+              <img
+                className="product-detail__main-image"
+                src={mainImage}
+                alt={product.title}
+              />
+            )}
           </div>
         </div>
 
         <div className="product-detail__content">
-          <p className="product-detail__eyebrow">{product.tag}</p>
+          {product.tag && <p className="product-detail__eyebrow">{product.tag}</p>}
           <h1>{product.title}</h1>
 
-          <div className="product-detail__rating" aria-label={`Rated ${product.rating.toFixed(1)} out of 5 from ${reviewCount} reviews`}>
-            <span className="product-detail__stars" aria-hidden="true">{starDisplay}</span>
-            <span>{product.rating.toFixed(1)}</span>
-            <button type="button" className="product-detail__review-link">· {reviewCount} reviews</button>
-          </div>
+          {rating !== undefined ? (
+            <div className="product-detail__rating" aria-label={`Rated ${rating.toFixed(1)} out of 5 from ${reviewCount} reviews`}>
+              <span className="product-detail__stars" aria-hidden="true">{starDisplay}</span>
+              <span>{rating.toFixed(1)}</span>
+              <button type="button" className="product-detail__review-link">· {reviewCount} reviews</button>
+            </div>
+          ) : (
+            <p className="product-detail__rating">No reviews yet</p>
+          )}
 
           <div className="product-detail__price">${product.price.toFixed(2)}</div>
 
@@ -144,7 +156,7 @@ function ProductDetailContent({ productId }: { productId?: string }) {
           <dl className="product-detail__details">
             <div><dt>Collection</dt><dd>{productType}</dd></div>
             {product.category && <div><dt>Category</dt><dd>{product.category}</dd></div>}
-            <div><dt>Product type</dt><dd>{product.tag}</dd></div>
+            {product.tag && <div><dt>Product type</dt><dd>{product.tag}</dd></div>}
             {product.intentions && product.intentions.length > 0 && <div><dt>Intentions</dt><dd>{product.intentions.join(', ')}</dd></div>}
           </dl>
         </section>
@@ -171,9 +183,15 @@ function ProductDetailContent({ productId }: { productId?: string }) {
         <section className="product-detail__info-section product-detail__reviews" aria-labelledby="customer-reviews-heading">
           <h2 id="customer-reviews-heading">Customer reviews</h2>
           <div className="product-detail__rating">
-            <span className="product-detail__stars" aria-hidden="true">{starDisplay}</span>
-            <span>{product.rating.toFixed(1)}</span>
-            <span>· {reviewCount} reviews</span>
+            {rating !== undefined ? (
+              <>
+                <span className="product-detail__stars" aria-hidden="true">{starDisplay}</span>
+                <span>{rating.toFixed(1)}</span>
+                <span>· {reviewCount} reviews</span>
+              </>
+            ) : (
+              <span>No reviews yet</span>
+            )}
           </div>
           <p>Customer reviews will appear here as they become available.</p>
         </section>

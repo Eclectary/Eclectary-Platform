@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import CategoryCard from '../components/CategoryCard';
 import Searchbar from '../components/Searchbar';
@@ -9,6 +9,32 @@ import '../styles/categories.css';
 
 function Categories() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [productCounts, setProductCounts] = useState<Record<string, number> | null>(null);
+  const [productsError, setProductsError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProductCounts() {
+      try {
+        const counts = await Promise.all(categories.map(async (category) => {
+          const products = await getProductsByCategory(category.id);
+          return [category.id, products.length] as const;
+        }));
+
+        if (active) {
+          setProductCounts(Object.fromEntries(counts));
+        }
+      } catch {
+        if (active) {
+          setProductsError(true);
+        }
+      }
+    }
+
+    void loadProductCounts();
+    return () => { active = false; };
+  }, []);
 
   const filteredCategories = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -55,14 +81,14 @@ function Categories() {
       {filteredCategories.length > 0 ? (
         <section className="categories-grid" aria-label="All categories">
           {filteredCategories.map((category) => {
-            const productCount = getProductsByCategory(category.id).length;
+            const productCount = productCounts?.[category.id];
             const sellerCount = getSellersByCategory(category.id).length;
 
             return (
               <div key={category.id} className="categories-grid__item">
                 <CategoryCard category={category} />
                 <p className="categories-grid__meta">
-                  {productCount} item{productCount === 1 ? '' : 's'} · {sellerCount} shop{sellerCount === 1 ? '' : 's'}
+                  {productsError ? 'Unable to load item counts' : productCount === undefined ? 'Loading items...' : `${productCount} item${productCount === 1 ? '' : 's'}`} · {sellerCount} shop{sellerCount === 1 ? '' : 's'}
                 </p>
               </div>
             );

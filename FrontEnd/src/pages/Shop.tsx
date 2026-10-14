@@ -232,7 +232,7 @@ function Shop() {
         sortedProducts.sort((a, b) => b.price - a.price);
         break;
       case 'rating-desc':
-        sortedProducts.sort((a, b) => b.rating - a.rating);
+        sortedProducts.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
         break;
       case 'newest':
         sortedProducts.sort((a, b) => b.id - a.id);

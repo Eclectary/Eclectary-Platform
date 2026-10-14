@@ -46,6 +46,19 @@ describe('ProductCard', () => {
     expect(image).toHaveAttribute('loading', 'lazy');
   });
 
+  it('should render safely when optional product fields are unavailable', () => {
+    renderProductCard({
+      id: 2,
+      title: 'Unrated Item',
+      price: 12,
+      creator: 'Seller',
+    });
+
+    expect(screen.queryByRole('img', { name: 'Unrated Item' })).not.toBeInTheDocument();
+    expect(screen.getByText('No reviews yet')).toBeInTheDocument();
+    expect(screen.queryByText('undefined')).not.toBeInTheDocument();
+  });
+
   it('should render links to product detail page', () => {
     renderProductCard();
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import ProductCard from '../components/ProductCard';
@@ -5,6 +6,7 @@ import SellerCard from '../components/SellerCard';
 import { getCategory } from '../data/categories';
 import { getProductsByCategory } from '../services/productApi';
 import { getSellersByCategory } from '../services/sellerApi';
+import type { Product } from '../types';
 import '../styles/category-detail.css';
 
 function Category() {
@@ -13,6 +15,42 @@ function Category() {
   const category = id ? getCategory(id) : undefined;
   const subcategory = searchParams.get('subcategory') ?? '';
   const isValidSubcategory = Boolean(category?.childSubcategories?.includes(subcategory));
+  const categoryId = category?.id;
+  const activeSubcategory = isValidSubcategory ? subcategory : undefined;
+  const [productsResult, setProductsResult] = useState<{
+    categoryId: string;
+    subcategory: string | undefined;
+    products: Product[];
+    error: boolean;
+  } | null>(null);
+  const isLoading = productsResult?.categoryId !== categoryId
+    || productsResult?.subcategory !== activeSubcategory;
+  const categoryProducts = !isLoading && productsResult ? productsResult.products : [];
+  const productsError = !isLoading && productsResult?.error;
+
+  useEffect(() => {
+    if (!categoryId) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadProducts(requestedCategoryId: string) {
+      try {
+        const products = await getProductsByCategory(requestedCategoryId, activeSubcategory);
+        if (active) {
+          setProductsResult({ categoryId: requestedCategoryId, subcategory: activeSubcategory, products, error: false });
+        }
+      } catch {
+        if (active) {
+          setProductsResult({ categoryId: requestedCategoryId, subcategory: activeSubcategory, products: [], error: true });
+        }
+      }
+    }
+
+    void loadProducts(categoryId);
+    return () => { active = false; };
+  }, [categoryId, activeSubcategory]);
 
   if (!category) {
     return (
@@ -26,7 +64,6 @@ function Category() {
     );
   }
 
-  const categoryProducts = getProductsByCategory(category.id, isValidSubcategory ? subcategory : undefined);
   const categorySellers = getSellersByCategory(category.id);
 
   return (
@@ -49,12 +86,21 @@ function Category() {
             ))}
           </p>
           <p className="category-detail__count">
-            {isValidSubcategory ? `${subcategory}: ` : ''}{categoryProducts.length} item{categoryProducts.length === 1 ? '' : 's'}
+            {isValidSubcategory ? `${subcategory}: ` : ''}{isLoading ? 'Loading items...' : productsError ? 'Item count unavailable' : `${categoryProducts.length} item${categoryProducts.length === 1 ? '' : 's'}`}
           </p>
         </div>
       </header>
 
-      {categoryProducts.length > 0 ? (
+      {isLoading ? (
+        <div className="category-detail__empty-state" role="status">
+          <p>Loading products...</p>
+        </div>
+      ) : productsError ? (
+        <div className="category-detail__empty-state" role="alert">
+          <h2>Unable to load products.</h2>
+          <p>Please try again later.</p>
+        </div>
+      ) : categoryProducts.length > 0 ? (
         <div className="category-detail__grid" aria-label={`${category.name} products`}>
           {categoryProducts.map((product) => (
             <ProductCard key={product.id} product={product} />

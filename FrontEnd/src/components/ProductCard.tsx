@@ -17,7 +17,9 @@ function ProductCard({ product }: ProductCardProps) {
     <article className="product-card">
       <div className="product-card__image-shell">
         <Link className="product-card__image-wrap" to={`/product/${product.id}`} aria-label={`View ${product.title}`}>
-          <img className="product-card__image" src={product.image} alt={product.title} loading="lazy" />
+          {product.image && (
+            <img className="product-card__image" src={product.image} alt={product.title} loading="lazy" />
+          )}
         </Link>
 
         <button
@@ -33,7 +35,7 @@ function ProductCard({ product }: ProductCardProps) {
 
       <div className="product-card__content">
         <div className="product-card__meta">
-          <span className="product-card__tag">{product.tag}</span>
+          {product.tag && <span className="product-card__tag">{product.tag}</span>}
           <StarRating
             className="product-card__rating"
             rating={product.rating}

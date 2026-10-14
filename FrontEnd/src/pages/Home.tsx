@@ -12,10 +12,11 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import CategoryCard from '../components/CategoryCard';
 import { categories } from '../data/categories';
-import { products } from '../data/products';
+import { getProducts } from '../services/productApi';
 import { getSellers } from '../services/sellerApi';
 
 import '../styles/home.css';
+import type { Product } from '../types';
 
 const sellers = getSellers();
 const AUTH_STORAGE_KEY = 'eclectary-auth';
@@ -38,15 +39,45 @@ function Home() {
   const { ids: wishlistIds } = useWishlist();
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAuthSession());
+  const [marketplaceProducts, setMarketplaceProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const engagedProductIds = [...wishlistIds, ...cartItems.map((item) => item.productId)];
-  const engagedProducts = products.filter((product) => engagedProductIds.includes(product.id));
+  const engagedProducts = marketplaceProducts.filter((product) =>
+    engagedProductIds.includes(product.id)
+  );
   const recommendationCategories = new Set(engagedProducts.map((product) => product.category));
-  const trendingProducts = [...products].sort((first, second) => second.rating - first.rating).slice(0, 4);
-  const recommendedProducts = (engagedProducts.length > 0
-    ? products.filter((product) => recommendationCategories.has(product.category) && !engagedProductIds.includes(product.id))
-    : products.slice(4, 8)
+  const trendingProducts = [...marketplaceProducts]
+    .sort((first, second) => (second.rating ?? 0) - (first.rating ?? 0))
+    .slice(0, 4);
+  const recommendedProducts = (
+    engagedProducts.length > 0
+      ? marketplaceProducts.filter(
+          (product) =>
+            recommendationCategories.has(product.category) &&
+            !engagedProductIds.includes(product.id)
+        )
+      : marketplaceProducts.slice(4, 8)
   ).slice(0, 4);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setProductsLoading(true);
+        setProductsError(null);
+
+        const data = await getProducts();
+        setMarketplaceProducts(data);
+      } catch {
+        setProductsError('Unable to load marketplace products.');
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
 
   useEffect(() => {
     const syncAuthState = () => setIsLoggedIn(hasAuthSession());
@@ -67,9 +98,14 @@ function Home() {
   );
   const filteredProducts = useMemo(
     () => normalizedSearch
-      ? products.filter((product) => [product.title, product.creator, product.tag].join(' ').toLowerCase().includes(normalizedSearch))
+      ? marketplaceProducts.filter((product) =>
+          [product.title, product.creator, product.tag]
+            .join(' ')
+            .toLowerCase()
+            .includes(normalizedSearch)
+        )
       : [],
-    [normalizedSearch],
+    [normalizedSearch, marketplaceProducts],
   );
 
   return (
@@ -144,7 +180,19 @@ function Home() {
           <Link to="/shop" className="home-section-link">See all <span aria-hidden="true">→</span></Link>
         </div>
         <div className="home-product-grid">
-          {trendingProducts.map((product) => <ProductCard key={product.id} product={product} />)}
+          {productsLoading && <p>Loading products...</p>}
+
+          {!productsLoading && productsError && (
+            <p role="alert">{productsError}</p>
+          )}
+
+          {!productsLoading && !productsError && trendingProducts.length === 0 && (
+            <p>No products available yet.</p>
+          )}
+
+          {!productsLoading && !productsError && trendingProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </div>
       </section>
 

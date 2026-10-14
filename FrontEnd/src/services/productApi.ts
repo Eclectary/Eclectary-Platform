@@ -1,13 +1,23 @@
-import { products } from '../data/products';
-import type { Product } from '../types';
+import api from "./api";
+import type { Product } from "../types";
 
-export function getProducts(): Product[] {
-	return products;
+interface ProductsResponse {
+  data: Product[];
 }
 
-export function getProductsByCategory(categoryId: string, subcategory?: string): Product[] {
-	return products.filter((product) => (
-		product.category === categoryId
-		&& (!subcategory || product.subcategory === subcategory)
-	));
+export async function getProducts(): Promise<Product[]> {
+  const response = await api.get<ProductsResponse>("/products");
+  return response.data.data;
+}
+
+export async function getProductsByCategory(
+  categoryId: string,
+  subcategory?: string
+): Promise<Product[]> {
+  const products = await getProducts();
+
+  return products.filter((product) => (
+    product.category === categoryId &&
+    (!subcategory || product.subcategory === subcategory)
+  ));
 }
