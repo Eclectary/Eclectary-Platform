@@ -11,13 +11,15 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function getProductsByCategory(
-  categoryId: string,
+  categoryId: string | number,
   subcategory?: string
 ): Promise<Product[]> {
   const products = await getProducts();
 
   return products.filter((product) => (
-    product.category === categoryId &&
+    (typeof categoryId === 'number'
+      ? product.category_id === categoryId
+      : product.category === categoryId) &&
     (!subcategory || product.subcategory === subcategory)
   ));
 }

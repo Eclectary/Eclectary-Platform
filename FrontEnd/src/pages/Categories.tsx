@@ -2,28 +2,62 @@ import { useEffect, useMemo, useState } from 'react';
 
 import CategoryCard from '../components/CategoryCard';
 import Searchbar from '../components/Searchbar';
-import { categories } from '../data/categories';
-import { getProductsByCategory } from '../services/productApi';
+import { getCategories } from '../services/categoryApi';
+import { getProducts } from '../services/productApi';
 import { getSellersByCategory } from '../services/sellerApi';
+import type { Category } from '../types';
+import type { Product } from '../types';
 import '../styles/categories.css';
 
 function Categories() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(false);
   const [productCounts, setProductCounts] = useState<Record<string, number> | null>(null);
   const [productsError, setProductsError] = useState(false);
 
   useEffect(() => {
     let active = true;
 
+    async function loadCategories() {
+      try {
+        const result = await getCategories();
+        if (active) {
+          setCategories(result);
+        }
+      } catch {
+        if (active) {
+          setCategoriesError(true);
+        }
+      } finally {
+        if (active) {
+          setCategoriesLoading(false);
+        }
+      }
+    }
+
+    void loadCategories();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (categoriesLoading || categoriesError || categories.length === 0) {
+      return undefined;
+    }
+
+    let active = true;
+
     async function loadProductCounts() {
       try {
-        const counts = await Promise.all(categories.map(async (category) => {
-          const products = await getProductsByCategory(category.id);
-          return [category.id, products.length] as const;
-        }));
+        const products = await getProducts();
+        const counts = Object.fromEntries(categories.map((category) => [
+          category.id,
+          products.filter((product: Product) => product.category_id === category.apiId).length,
+        ]));
 
         if (active) {
-          setProductCounts(Object.fromEntries(counts));
+          setProductCounts(counts);
         }
       } catch {
         if (active) {
@@ -34,7 +68,7 @@ function Categories() {
 
     void loadProductCounts();
     return () => { active = false; };
-  }, []);
+  }, [categories, categoriesError, categoriesLoading]);
 
   const filteredCategories = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -51,7 +85,7 @@ function Categories() {
 
       return categoryNameMatch || Boolean(childCategoryMatch);
     });
-  }, [searchTerm]);
+  }, [categories, searchTerm]);
 
   return (
     <div className="categories-page">
@@ -78,7 +112,11 @@ function Categories() {
         className="categories-search"
       />
 
-      {filteredCategories.length > 0 ? (
+      {categoriesLoading ? (
+        <p role="status">Loading categories...</p>
+      ) : categoriesError ? (
+        <p role="alert">Unable to load categories.</p>
+      ) : filteredCategories.length > 0 ? (
         <section className="categories-grid" aria-label="All categories">
           {filteredCategories.map((category) => {
             const productCount = productCounts?.[category.id];
@@ -94,6 +132,10 @@ function Categories() {
             );
           })}
         </section>
+      ) : categories.length === 0 ? (
+        <div className="categories-empty-state" aria-live="polite">
+          <h2>No categories available yet.</h2>
+        </div>
       ) : (
         <div className="categories-empty-state" aria-live="polite">
           <h2>No categories match your search.</h2>

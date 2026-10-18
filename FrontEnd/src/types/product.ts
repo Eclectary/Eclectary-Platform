@@ -9,6 +9,7 @@ export interface Product {
 	images?: string[];
 	collection?: 'custom-printing' | 'purely-handmade' | 'digital-creations';
 	category?: string;
+	category_id?: number;
 	subcategory?: string;
 	intentions?: string[];
 	seller?: string;

@@ -11,12 +11,12 @@ import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import CategoryCard from '../components/CategoryCard';
-import { categories } from '../data/categories';
+import { getCategories } from '../services/categoryApi';
 import { getProducts } from '../services/productApi';
 import { getSellers } from '../services/sellerApi';
 
 import '../styles/home.css';
-import type { Product } from '../types';
+import type { Category, Product } from '../types';
 
 const sellers = getSellers();
 const AUTH_STORAGE_KEY = 'eclectary-auth';
@@ -42,6 +42,9 @@ function Home() {
   const [marketplaceProducts, setMarketplaceProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [marketplaceCategories, setMarketplaceCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const engagedProductIds = [...wishlistIds, ...cartItems.map((item) => item.productId)];
   const engagedProducts = marketplaceProducts.filter((product) =>
@@ -77,6 +80,30 @@ function Home() {
     };
 
     loadProducts();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCategories = async () => {
+      try {
+        const data = await getCategories();
+        if (active) {
+          setMarketplaceCategories(data);
+        }
+      } catch {
+        if (active) {
+          setCategoriesError('Unable to load categories.');
+        }
+      } finally {
+        if (active) {
+          setCategoriesLoading(false);
+        }
+      }
+    };
+
+    void loadCategories();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -205,7 +232,14 @@ function Home() {
           <Link to="/categories" className="home-section-link">Browse categories <span aria-hidden="true">→</span></Link>
         </div>
         <div className="home-category-grid">
-          {categories.slice(0, 10).map((category) => <CategoryCard key={category.id} category={category} />)}
+          {categoriesLoading && <p role="status">Loading categories...</p>}
+          {!categoriesLoading && categoriesError && <p role="alert">{categoriesError}</p>}
+          {!categoriesLoading && !categoriesError && marketplaceCategories.length === 0 && (
+            <p>No categories available yet.</p>
+          )}
+          {!categoriesLoading && !categoriesError && marketplaceCategories.slice(0, 10).map((category) => (
+            <CategoryCard key={category.apiId ?? category.id} category={category} />
+          ))}
         </div>
       </section>
 

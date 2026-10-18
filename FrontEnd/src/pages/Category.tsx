@@ -4,38 +4,67 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import SellerCard from '../components/SellerCard';
 import { getCategory } from '../data/categories';
+import { getCategories } from '../services/categoryApi';
 import { getProductsByCategory } from '../services/productApi';
 import { getSellersByCategory } from '../services/sellerApi';
-import type { Product } from '../types';
+import type { Category as CategoryType, Product } from '../types';
 import '../styles/category-detail.css';
 
 function Category() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const category = id ? getCategory(id) : undefined;
+  const localCategory = id ? getCategory(id) : undefined;
+  const [apiCategories, setApiCategories] = useState<CategoryType[] | null>(null);
+  const [categoryLookupError, setCategoryLookupError] = useState(false);
   const subcategory = searchParams.get('subcategory') ?? '';
+  const apiCategory = apiCategories?.find((item) => item.slug === id);
+  const category = apiCategory ?? localCategory;
   const isValidSubcategory = Boolean(category?.childSubcategories?.includes(subcategory));
-  const categoryId = category?.id;
+  const categoryId = apiCategory?.apiId;
   const activeSubcategory = isValidSubcategory ? subcategory : undefined;
   const [productsResult, setProductsResult] = useState<{
-    categoryId: string;
+    categoryId: string | number;
     subcategory: string | undefined;
     products: Product[];
     error: boolean;
   } | null>(null);
-  const isLoading = productsResult?.categoryId !== categoryId
-    || productsResult?.subcategory !== activeSubcategory;
+  const isCategoryLoading = apiCategories === null && !categoryLookupError;
+  const isLoading = isCategoryLoading || (categoryId !== undefined && (
+    productsResult?.categoryId !== categoryId
+    || productsResult?.subcategory !== activeSubcategory
+  ));
   const categoryProducts = !isLoading && productsResult ? productsResult.products : [];
-  const productsError = !isLoading && productsResult?.error;
+  const productsError = !isLoading && (categoryLookupError || productsResult?.error);
 
   useEffect(() => {
-    if (!categoryId) {
-      return;
+    let active = true;
+
+    const loadCategories = async () => {
+      try {
+        const result = await getCategories();
+        if (active) {
+          setApiCategories(result);
+        }
+      } catch {
+        if (active) {
+          setCategoryLookupError(true);
+          setApiCategories([]);
+        }
+      }
+    };
+
+    void loadCategories();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (categoryId === undefined) {
+      return undefined;
     }
 
     let active = true;
 
-    async function loadProducts(requestedCategoryId: string) {
+    async function loadProducts(requestedCategoryId: string | number) {
       try {
         const products = await getProductsByCategory(requestedCategoryId, activeSubcategory);
         if (active) {
@@ -51,6 +80,26 @@ function Category() {
     void loadProducts(categoryId);
     return () => { active = false; };
   }, [categoryId, activeSubcategory]);
+
+  if (!category && isCategoryLoading) {
+    return (
+      <section className="category-detail category-detail--empty" role="status">
+        <p>Loading category...</p>
+      </section>
+    );
+  }
+
+  if (!category && categoryLookupError) {
+    return (
+      <section className="category-detail category-detail--empty" role="alert">
+        <h1>Unable to load category information.</h1>
+        <p>Please try again later.</p>
+        <Link className="category-detail__back-link" to="/categories">
+          Back to categories
+        </Link>
+      </section>
+    );
+  }
 
   if (!category) {
     return (
@@ -73,7 +122,7 @@ function Category() {
       </Link>
 
       <header className="category-detail__hero">
-        <img className="category-detail__image" src={category.image} alt="" />
+        {category.image && <img className="category-detail__image" src={category.image} alt="" />}
         <div className="category-detail__copy">
           <p className="eyebrow">Marketplace category</p>
           <h1>{category.name}</h1>
@@ -97,7 +146,7 @@ function Category() {
         </div>
       ) : productsError ? (
         <div className="category-detail__empty-state" role="alert">
-          <h2>Unable to load products.</h2>
+          <h2>{categoryLookupError ? 'Unable to load category information.' : 'Unable to load products.'}</h2>
           <p>Please try again later.</p>
         </div>
       ) : categoryProducts.length > 0 ? (
