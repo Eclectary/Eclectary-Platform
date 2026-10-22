@@ -20,7 +20,41 @@ class ApiEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal %w[data pagination], body.keys.sort
     assert_equal products.count, body["data"].length
     assert_equal products.count, body.dig("pagination", "total")
-    assert_equal %w[category_id created_at description id price seller_id title updated_at], body["data"].first.keys.sort
+    assert_equal %w[category category_id created_at creator description id image images price seller_id title updated_at], body["data"].first.keys.sort
+
+    product = body["data"].first
+    seller = Product.find(product["id"]).seller
+
+    assert_equal seller.public_name.presence || "Maker ##{seller.id}", product["creator"]
+    refute_equal seller.email, product["creator"]
+    assert_nil product["image"]
+    assert_equal [], product["images"]
+  end
+
+  test "product detail exposes the primary and all attached image paths" do
+    product = products(:one)
+    image_path = Rails.root.join("public", "product-images", "moonlit-clay-mug.png")
+    ["moonlit-clay-mug.png", "moonlit-clay-mug-detail.png"].each do |filename|
+      File.open(image_path, "rb") do |image|
+        product.images.attach(
+          io: image,
+          filename: filename,
+          content_type: "image/png"
+        )
+      end
+    end
+
+    get "/api/v1/products/#{product.id}"
+
+    assert_response :success
+    body = JSON.parse(response.body).fetch("data")
+    image_urls = product.images_attachments.order(:id).map do |attachment|
+      Rails.application.routes.url_helpers.rails_blob_path(attachment.blob, only_path: true)
+    end
+    assert_equal image_urls.first, body["image"]
+    assert_equal image_urls, body["images"]
+    get image_urls.first
+    assert_response :redirect
   end
 
   test "categories returns serialized data" do

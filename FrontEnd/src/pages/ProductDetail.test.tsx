@@ -1,14 +1,16 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { AxiosError, AxiosHeaders } from 'axios';
 import userEvent from '@testing-library/user-event';
 import ProductDetail from '../pages/ProductDetail';
 import { CartProvider } from '../context/CartContext';
 import { WishlistProvider } from '../context/WishlistContext';
+import { getProductById, getProducts } from '../services/productApi';
+import { getPublicSellerById } from '../services/sellerApi';
+import type { Product } from '../types';
 
-// Mock the data
-vi.mock('../data/products', () => ({
-  products: [
+const productFixtures: Product[] = [
     {
       id: 1,
       title: 'Moonlit Clay Mug',
@@ -46,11 +48,16 @@ vi.mock('../data/products', () => ({
       rating: 4.7,
       image: 'https://example.com/journal.jpg',
     },
-  ],
+  ];
+
+vi.mock('../services/productApi', () => ({
+  getProductById: vi.fn(),
+  getProducts: vi.fn(),
 }));
 
 // Mock the sellers service
 vi.mock('../services/sellerApi', () => ({
+  getPublicSellerById: vi.fn(),
   getSellers: () => [
     {
       id: 1,
@@ -60,6 +67,22 @@ vi.mock('../services/sellerApi', () => ({
     },
   ],
 }));
+
+beforeEach(() => {
+  vi.mocked(getProductById).mockReset();
+  vi.mocked(getProducts).mockReset();
+  vi.mocked(getPublicSellerById).mockReset();
+  vi.mocked(getProducts).mockResolvedValue(productFixtures);
+  vi.mocked(getProductById).mockImplementation(async (id) => {
+    const product = productFixtures.find((item) => String(item.id) === id);
+    if (!product) {
+      throw new AxiosError('Not found', '404', undefined, undefined, {
+        status: 404, statusText: 'Not Found', data: {}, headers: {}, config: { headers: new AxiosHeaders() },
+      });
+    }
+    return product;
+  });
+});
 
 const renderProductDetailWithId = (productId: string | number = 1) => {
   return render(
@@ -76,6 +99,58 @@ const renderProductDetailWithId = (productId: string | number = 1) => {
 };
 
 describe('ProductDetail', () => {
+  it('loads an API product outside the mock catalog and links its real seller by ID', async () => {
+    vi.mocked(getProductById).mockResolvedValue({
+      id: 987654, title: 'Live API bowl', price: 19.99, creator: 'Old maker name', seller_id: 42,
+    });
+    vi.mocked(getProducts).mockResolvedValue([]);
+    vi.mocked(getPublicSellerById).mockResolvedValue({
+      id: 42, name: 'Public Clay Studio', image: '/favicon.svg', specialty: '', bio: '',
+    });
+    renderProductDetailWithId(987654);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading product...');
+    expect(await screen.findByRole('heading', { name: 'Live API bowl' })).toBeInTheDocument();
+    expect(getProductById).toHaveBeenCalledWith('987654');
+    expect(await screen.findByRole('link', { name: 'Public Clay Studio' })).toHaveAttribute('href', '/seller/42');
+    expect(getPublicSellerById).toHaveBeenCalledWith('42');
+    expect(screen.getByText('$19.99')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'No image available for Live API bowl' })).toBeInTheDocument();
+    expect(screen.queryByText('Moonlit Clay Mug')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Related products')).not.toBeInTheDocument();
+  });
+
+  it('does not substitute a mock product when the API fails for a matching ID', async () => {
+    vi.mocked(getProductById).mockRejectedValue(new Error('Network unavailable'));
+    renderProductDetailWithId(1);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load this product.');
+    expect(screen.queryByText('Product not found')).not.toBeInTheDocument();
+    expect(screen.queryByText('Moonlit Clay Mug')).not.toBeInTheDocument();
+  });
+
+  it('keeps the product visible when related products fail and reports the error', async () => {
+    vi.mocked(getProducts).mockRejectedValue(new Error('Network unavailable'));
+    renderProductDetailWithId(1);
+    expect(await screen.findByRole('heading', { name: 'Moonlit Clay Mug' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load related products.');
+  });
+
+  it('reports seller failures without hiding the product', async () => {
+    vi.mocked(getProductById).mockResolvedValue({ ...productFixtures[0], seller_id: 42 });
+    vi.mocked(getPublicSellerById).mockRejectedValue(new Error('Network unavailable'));
+    renderProductDetailWithId(1);
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unable to load this maker's profile.");
+    expect(screen.getByRole('heading', { name: 'Moonlit Clay Mug' })).toBeInTheDocument();
+  });
+
+  it('ignores an API response after leaving the product page', async () => {
+    let resolve!: (product: Product) => void;
+    vi.mocked(getProductById).mockReturnValue(new Promise((done) => { resolve = done; }));
+    const view = renderProductDetailWithId(1);
+    view.unmount();
+    await act(async () => resolve(productFixtures[0]));
+    expect(getPublicSellerById).not.toHaveBeenCalled();
+  });
+
   it('should render product details when product is found', async () => {
     const { container } = renderProductDetailWithId(1);
 
@@ -107,6 +182,15 @@ describe('ProductDetail', () => {
     const image = screen.getByAltText('Moonlit Clay Mug') as HTMLImageElement;
     // Initially shows the main product image
     expect(image.src).toContain('mug.jpg');
+  });
+
+  it('shows the accessible fallback when the primary image fails to load', async () => {
+    renderProductDetailWithId(1);
+
+    fireEvent.error(await screen.findByAltText('Moonlit Clay Mug'));
+
+    expect(screen.getByRole('img', { name: 'No image available for Moonlit Clay Mug' }))
+      .toBeInTheDocument();
   });
 
   it('should render gallery thumbnail buttons', async () => {

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import customPrinting from '../assets/images/custom-printing.png';
 import digitalCreations from '../assets/images/digital-creations.png';
@@ -13,12 +13,11 @@ import { useWishlist } from '../context/WishlistContext';
 import CategoryCard from '../components/CategoryCard';
 import { getCategories } from '../services/categoryApi';
 import { getProducts } from '../services/productApi';
-import { getSellers } from '../services/sellerApi';
+import { getPublicSellers } from '../services/sellerApi';
 
 import '../styles/home.css';
-import type { Category, Product } from '../types';
+import type { Category, Product, Seller } from '../types';
 
-const sellers = getSellers();
 const AUTH_STORAGE_KEY = 'eclectary-auth';
 const AUTH_EVENT_NAME = 'eclectary-auth-change';
 const FEEDBACK_URL = import.meta.env.VITE_FEEDBACK_URL || 'http://localhost:3000';
@@ -45,6 +44,9 @@ function Home() {
   const [marketplaceCategories, setMarketplaceCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [sellersLoading, setSellersLoading] = useState(true);
+  const [sellersError, setSellersError] = useState<string | null>(null);
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const engagedProductIds = [...wishlistIds, ...cartItems.map((item) => item.productId)];
   const engagedProducts = marketplaceProducts.filter((product) =>
@@ -64,23 +66,23 @@ function Home() {
       : marketplaceProducts.slice(4, 8)
   ).slice(0, 4);
 
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        setProductsLoading(true);
-        setProductsError(null);
+  const loadProducts = useCallback(async () => {
+    setProductsLoading(true);
+    setProductsError(null);
 
-        const data = await getProducts();
-        setMarketplaceProducts(data);
-      } catch {
-        setProductsError('Unable to load marketplace products.');
-      } finally {
-        setProductsLoading(false);
-      }
-    };
-
-    loadProducts();
+    try {
+      const data = await getProducts();
+      setMarketplaceProducts(data);
+    } catch {
+      setProductsError('Unable to load marketplace products.');
+    } finally {
+      setProductsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadProducts);
+  }, [loadProducts]);
 
   useEffect(() => {
     let active = true;
@@ -107,6 +109,30 @@ function Home() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
+    const loadSellers = async () => {
+      try {
+        const data = await getPublicSellers();
+        if (active) {
+          setSellers(data);
+        }
+      } catch {
+        if (active) {
+          setSellersError('Unable to load makers.');
+        }
+      } finally {
+        if (active) {
+          setSellersLoading(false);
+        }
+      }
+    };
+
+    void loadSellers();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     const syncAuthState = () => setIsLoggedIn(hasAuthSession());
 
     window.addEventListener('storage', syncAuthState);
@@ -121,7 +147,7 @@ function Home() {
     () => normalizedSearch
       ? sellers.filter((seller) => [seller.name, seller.specialty, seller.bio].join(' ').toLowerCase().includes(normalizedSearch))
       : sellers.slice(0, 4),
-    [normalizedSearch],
+    [normalizedSearch, sellers],
   );
   const filteredProducts = useMemo(
     () => normalizedSearch
@@ -183,10 +209,21 @@ function Home() {
         <section className="home-search-results" aria-label="Search results">
           <div className="makers-header">
             <h2>Search results</h2>
-            <p>{filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'} and {filteredSellers.length} maker{filteredSellers.length === 1 ? '' : 's'} found</p>
+            {!productsLoading && !productsError && (
+              <p>{filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'} and {filteredSellers.length} maker{filteredSellers.length === 1 ? '' : 's'} found</p>
+            )}
           </div>
 
-          {filteredProducts.length > 0 && (
+          {productsLoading && <p className="home-product-state" role="status">Loading product results...</p>}
+          {!productsLoading && productsError && (
+            <p className="home-product-state" role="status">
+              Product results are unavailable. Retry loading products in Trending now.
+            </p>
+          )}
+          {!productsLoading && !productsError && filteredProducts.length === 0 && (
+            <p className="home-product-state" role="status">No products match your search.</p>
+          )}
+          {!productsLoading && !productsError && filteredProducts.length > 0 && (
             <div className="home-search-products">
               {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
             </div>
@@ -207,14 +244,19 @@ function Home() {
           <Link to="/shop" className="home-section-link">See all <span aria-hidden="true">→</span></Link>
         </div>
         <div className="home-product-grid">
-          {productsLoading && <p>Loading products...</p>}
+          {productsLoading && <p className="home-product-state" role="status">Loading products...</p>}
 
           {!productsLoading && productsError && (
-            <p role="alert">{productsError}</p>
+            <div className="home-product-state" role="alert">
+              <p>{productsError}</p>
+              <button type="button" className="home-product-retry" onClick={() => void loadProducts()}>
+                Retry loading products
+              </button>
+            </div>
           )}
 
           {!productsLoading && !productsError && trendingProducts.length === 0 && (
-            <p>No products available yet.</p>
+            <p className="home-product-state" role="status">No products available yet.</p>
           )}
 
           {!productsLoading && !productsError && trendingProducts.map((product) => (
@@ -252,6 +294,18 @@ function Home() {
           <Link to="/shop" className="home-section-link">Explore more <span aria-hidden="true">→</span></Link>
         </div>
         <div className="home-product-grid">
+          {productsLoading && (
+            <p className="home-product-state" role="status">Recommendations will appear when products finish loading.</p>
+          )}
+          {!productsLoading && productsError && (
+            <p className="home-product-state">Recommendations are unavailable until products can be loaded.</p>
+          )}
+          {!productsLoading && !productsError && marketplaceProducts.length === 0 && (
+            <p className="home-product-state" role="status">No recommendations available yet.</p>
+          )}
+          {!productsLoading && !productsError && marketplaceProducts.length > 0 && recommendedProducts.length === 0 && (
+            <p className="home-product-state" role="status">More recommendations will appear as the marketplace grows.</p>
+          )}
           {recommendedProducts.map((product) => <ProductCard key={product.id} product={product} />)}
         </div>
       </section>
@@ -259,9 +313,14 @@ function Home() {
       <section className="makers-section">
         <div className="makers-header"><h2>Meet the Makers</h2></div>
         <div className="makers-grid">
-          {filteredSellers.map((seller) => <SellerCard key={seller.id} seller={seller} />)}
+          {sellersLoading && <p role="status">Loading makers...</p>}
+          {!sellersLoading && sellersError && <p role="alert">{sellersError}</p>}
+          {!sellersLoading && !sellersError && filteredSellers.length === 0 && (
+            <p>{normalizedSearch ? 'No makers match your search.' : 'No makers available yet.'}</p>
+          )}
+          {!sellersLoading && !sellersError && filteredSellers.map((seller) => <SellerCard key={seller.id} seller={seller} />)}
         </div>
-        <div className="makers-footer"><Link to="/shop">View All Makers <span aria-hidden="true">→</span></Link></div>
+        <div className="makers-footer"><Link to="/shop#makers">View All Makers <span aria-hidden="true">→</span></Link></div>
       </section>
 
       <section className="home-feedback-banner" aria-labelledby="feedback-heading">

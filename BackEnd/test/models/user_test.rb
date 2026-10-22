@@ -40,4 +40,22 @@ class UserTest < ActiveSupport::TestCase
     assert_not json.key?("password_digest")
     assert_not json.key?("password")
   end
+
+  test "public profiles allow blank fields and reject unsafe image URLs" do
+    user = User.new(valid_attributes.merge(public_name: "Clay Studio", image_url: "https://example.com/clay.jpg"))
+    assert user.valid?
+    user.image_url = "javascript:alert(1)"
+    assert_not user.valid?
+    assert_includes user.errors[:image_url], "is invalid"
+    user.image_url = nil
+    assert user.valid?
+  end
+
+  test "public profile copy has bounded lengths" do
+    user = User.new(valid_attributes.merge(public_name: "a" * 256, specialty: "a" * 256, bio: "a" * 2001))
+    assert_not user.valid?
+    assert user.errors[:public_name].any?
+    assert user.errors[:specialty].any?
+    assert user.errors[:bio].any?
+  end
 end

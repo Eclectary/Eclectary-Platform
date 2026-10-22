@@ -1,112 +1,128 @@
-# Development seed data
+require "securerandom"
 
-admin = User.find_or_create_by!(email: "contact@eclectary.com") do |user|
-  user.password = "Silverrose7*"
-  user.password_confirmation = "Silverrose7*"
-  user.role = "administrator"
-end
-admin.update!(
-  password: "Silverrose7*",
-  password_confirmation: "Silverrose7*",
-  role: "administrator"
-)
-
-seller = User.find_or_create_by!(email: "seller@eclectary.com") do |user|
-  user.password = "SellerDev123!"
-  user.password_confirmation = "SellerDev123!"
-  user.role = "seller"
+categories = {
+  "ceramics-clay" => "Ceramics & Clay",
+  "candles-wax" => "Candles & Wax",
+  "fiber-arts-textiles" => "Fiber Arts & Textiles",
+  "handmade-art" => "Handmade Art",
+  "handmade-books-journals" => "Handmade Books & Journals"
+}.each_with_object({}) do |(slug, name), seeded_categories|
+  category = Category.find_or_initialize_by(slug: slug)
+  category.name = name
+  category.save!
+  seeded_categories[slug] = category
 end
 
-customer = User.find_or_create_by!(email: "customer@eclectary.com") do |user|
-  user.password = "CustomerDev123!"
-  user.password_confirmation = "CustomerDev123!"
-  user.role = "customer"
-end
-
-categories = {}
-
-[
-  ["Cross Stitch Patterns", "cross-stitch-patterns"],
-  ["Embroidery", "embroidery"],
-  ["Digital Art", "digital-art"],
-  ["Metaphysical", "metaphysical"],
-  ["Nature Inspired", "nature-inspired"]
-].each do |name, slug|
-  categories[slug] = Category.find_or_create_by!(slug: slug) do |category|
-    category.name = name
+makers = [
+  {
+    key: "moss-atelier",
+    email: "seed-moss-atelier@eclectary.test",
+    name: "Moss Atelier",
+    specialty: "Ceramics & tableware",
+    bio: "Hand-thrown stoneware and quiet everyday rituals for slow living.",
+    image_url: "https://images.unsplash.com/photo-1517705008128-361805f42e86?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "hearth-thread",
+    email: "seed-hearth-thread@eclectary.test",
+    name: "Hearth & Thread",
+    specialty: "Textiles & home",
+    bio: "Natural fibers, layered textures, and cozy pieces for soulful spaces.",
+    image_url: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "petal-foundry",
+    email: "seed-petal-foundry@eclectary.test",
+    name: "Petal Foundry",
+    specialty: "Art prints & botanicals",
+    bio: "Pressed floral work, thoughtful stationery, and tactile keepsakes.",
+    image_url: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=1200&q=80"
+  }
+].each_with_object({}) do |maker, seeded_makers|
+  seller = User.find_or_initialize_by(email: maker[:email])
+  if seller.persisted? && !seller.seller?
+    raise "Seed maker email #{maker[:email]} belongs to a non-seller; refusing to change that account."
   end
+
+  seller.role = "seller"
+  seller.public_name = maker[:name]
+  seller.specialty = maker[:specialty]
+  seller.bio = maker[:bio]
+  seller.image_url = maker[:image_url]
+  unless seller.persisted?
+    password = SecureRandom.hex(32)
+    seller.password = password
+    seller.password_confirmation = password
+  end
+  seller.save!
+  seeded_makers[maker[:key]] = seller
 end
 
-products = {}
+products = [
+  {
+    title: "Moonlit Clay Mug",
+    description: "A hand-thrown stoneware mug with a soft, moonlit glaze, made for slow mornings and evening tea.",
+    price: 34.00,
+    maker: "moss-atelier",
+    category: "ceramics-clay",
+    image: "moonlit-clay-mug.png"
+  },
+  {
+    title: "Botanical Candle Set",
+    description: "A small-batch pair of botanical-scented candles for a calm, welcoming home.",
+    price: 28.00,
+    maker: "hearth-thread",
+    category: "candles-wax",
+    image: "botanical-candle-set.png"
+  },
+  {
+    title: "Sage Linen Throw",
+    description: "A softly textured linen throw in a muted sage tone, woven for everyday comfort.",
+    price: 58.00,
+    maker: "hearth-thread",
+    category: "fiber-arts-textiles",
+    image: "sage-linen-throw.png"
+  },
+  {
+    title: "Pressed Herb Bundle",
+    description: "A carefully arranged bundle of pressed botanicals, gathered as a nature-inspired keepsake.",
+    price: 18.00,
+    maker: "petal-foundry",
+    category: "handmade-art",
+    image: "pressed-herb-bundle.png"
+  },
+  {
+    title: "Wildflower Press Set",
+    description: "A set of botanical art prints featuring delicate wildflower forms for a bright, thoughtful space.",
+    price: 32.00,
+    maker: "petal-foundry",
+    category: "handmade-art",
+    image: "wildflower-press-set.png"
+  },
+  {
+    title: "Celestial Journal",
+    description: "A thoughtfully bound journal with a celestial-inspired cover for notes, sketches, and reflection.",
+    price: 24.00,
+    maker: "petal-foundry",
+    category: "handmade-books-journals",
+    image: "celestial-journal.png"
+  }
+].each do |attributes|
+  product = Product.find_or_initialize_by(title: attributes[:title])
+  product.description = attributes[:description]
+  product.price = attributes[:price]
+  product.seller = makers.fetch(attributes[:maker])
+  product.category = categories.fetch(attributes[:category])
+  product.save!
 
-products["purple-butterfly"] = Product.find_or_create_by!(title: "Purple Butterfly Cross Stitch Pattern") do |product|
-  product.description = "A nature-inspired purple butterfly cross stitch pattern."
-  product.price = 6.99
-  product.seller = seller
-  product.category = categories["cross-stitch-patterns"]
-end
-
-products["lavender-teacup"] = Product.find_or_create_by!(title: "Lavender Rose Teacup Cross Stitch Pattern") do |product|
-  product.description = "A lavender and rose teacup inspired cross stitch pattern."
-  product.price = 7.99
-  product.seller = seller
-  product.category = categories["cross-stitch-patterns"]
-end
-
-products["purple-peony"] = Product.find_or_create_by!(title: "Purple Peony Cross Stitch Pattern") do |product|
-  product.description = "A floral purple peony cross stitch pattern."
-  product.price = 5.99
-  product.seller = seller
-  product.category = categories["cross-stitch-patterns"]
-end
-
-products["mystical-moon"] = Product.find_or_create_by!(title: "Mystical Moon Digital Artwork") do |product|
-  product.description = "A spiritual moon-inspired digital artwork."
-  product.price = 4.99
-  product.seller = seller
-  product.category = categories["digital-art"]
-end
-
-products["botanical-spirit"] = Product.find_or_create_by!(title: "Botanical Spirit Artwork") do |product|
-  product.description = "Nature-inspired artwork with a mystical botanical theme."
-  product.price = 8.99
-  product.seller = seller
-  product.category = categories["nature-inspired"]
-end
-
-cart = Cart.find_or_create_by!(user: customer)
-
-CartItem.find_or_create_by!(
-  cart: cart,
-  product: products["purple-butterfly"]
-) do |item|
-  item.quantity = 2
-end
-
-CartItem.find_or_create_by!(
-  cart: cart,
-  product: products["lavender-teacup"]
-) do |item|
-  item.quantity = 1
-end
-
-order = Order.find_or_create_by!(
-  user: customer,
-  status: "pending"
-)
-
-OrderItem.find_or_create_by!(
-  order: order,
-  product: products["purple-butterfly"]
-) do |item|
-  item.quantity = 2
-  item.price = products["purple-butterfly"].price
-end
-
-OrderItem.find_or_create_by!(
-  order: order,
-  product: products["lavender-teacup"]
-) do |item|
-  item.quantity = 1
-  item.price = products["lavender-teacup"].price
+  unless product.images.attached?
+    image_path = Rails.root.join("public", "product-images", attributes[:image])
+    File.open(image_path, "rb") do |image|
+      product.images.attach(
+        io: image,
+        filename: attributes[:image],
+        content_type: "image/png"
+      )
+    end
+  end
 end

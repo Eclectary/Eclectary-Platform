@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { useWishlist } from '../context/WishlistContext';
 import StarRating from './StarRating';
+import ProductImage from './ProductImage';
 import type { Product } from '../types/product';
 import '../styles/product-card.css';
 
@@ -17,9 +18,13 @@ function ProductCard({ product }: ProductCardProps) {
     <article className="product-card">
       <div className="product-card__image-shell">
         <Link className="product-card__image-wrap" to={`/product/${product.id}`} aria-label={`View ${product.title}`}>
-          {product.image && (
-            <img className="product-card__image" src={product.image} alt={product.title} loading="lazy" />
-          )}
+          <ProductImage
+            image={product.image}
+            alt={product.title}
+            className="product-card__image"
+            fallbackClassName="product-card__image-placeholder"
+            loading="lazy"
+          />
         </Link>
 
         <button

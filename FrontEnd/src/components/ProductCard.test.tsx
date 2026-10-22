@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import ProductCard from '../components/ProductCard';
@@ -44,6 +44,7 @@ describe('ProductCard', () => {
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', 'https://example.com/mug.jpg');
     expect(image).toHaveAttribute('loading', 'lazy');
+    expect(screen.queryByRole('img', { name: 'No image available for Test Mug' })).not.toBeInTheDocument();
   });
 
   it('should render safely when optional product fields are unavailable', () => {
@@ -54,9 +55,24 @@ describe('ProductCard', () => {
       creator: 'Seller',
     });
 
-    expect(screen.queryByRole('img', { name: 'Unrated Item' })).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'No image available for Unrated Item' })).toBeInTheDocument();
     expect(screen.getByText('No reviews yet')).toBeInTheDocument();
     expect(screen.queryByText('undefined')).not.toBeInTheDocument();
+  });
+
+  it('should render the image placeholder for an empty image URL', () => {
+    renderProductCard({ ...mockProduct, image: '' });
+
+    expect(screen.getByRole('img', { name: 'No image available for Test Mug' })).toBeInTheDocument();
+    expect(screen.queryByAltText('Test Mug')).not.toBeInTheDocument();
+  });
+
+  it('should show the accessible placeholder when the product image fails to load', () => {
+    renderProductCard();
+
+    fireEvent.error(screen.getByAltText('Test Mug'));
+
+    expect(screen.getByRole('img', { name: 'No image available for Test Mug' })).toBeInTheDocument();
   });
 
   it('should render links to product detail page', () => {

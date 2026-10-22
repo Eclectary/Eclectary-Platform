@@ -55,12 +55,11 @@ development:
   # Defaults to warning.
   #min_messages: notice
 
-# Warning: The database defined as "test" will be erased and
-# re-generated from your development database when you run "rake".
-# Do not set this db to the same as development or production.
+# The test database is scratch space for the test suite and must remain
+# separate from development and production.
 test:
   <<: *default
-  database: <%= ENV.fetch("DATABASE_NAME", "back_end_test") %>
+  database: eclectary_test
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is

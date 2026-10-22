@@ -406,11 +406,30 @@
   gap: 24px;
 }
 
+.shop-data-state {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--border-aura);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-muted);
+}
+
+.shop-data-state[role="alert"] {
+  color: #7a3030;
+}
+
+.shop-data-state p {
+  margin: 0 0 12px;
+}
+
 .shop-sellers {
   margin-top: 44px;
   padding: 42px 24px 52px;
   border-radius: var(--radius-lg);
   background: var(--gradient-makers);
+  scroll-margin-top: 24px;
 }
 
 .shop-sellers-grid {

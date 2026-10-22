@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 
 import ProductCard from '../components/ProductCard';
 import DepartmentSidebar from '../components/DepartmentSidebar';
@@ -7,14 +7,13 @@ import Searchbar from '../components/Searchbar';
 import SellerCard from '../components/SellerCard';
 import logo from '../assets/images/eclectary logo nb.png';
 import { useCart } from '../context/CartContext';
-import { products } from '../data/products';
 import { intentions } from '../data/intentions';
-import { categories } from '../data/categories';
-import { getSellers } from '../services/sellerApi';
+import { getProducts } from '../services/productApi';
+import { getCategories } from '../services/categoryApi';
+import { getPublicSellers } from '../services/sellerApi';
+import type { Category, Product, Seller } from '../types';
 
 import '../styles/shop.css';
-
-const sellers = getSellers();
 
 const PRICE_BUCKETS: Array<{ id: string; label: string; min: number; max?: number }> = [
   { id: 'under-25', label: 'Under $25', min: 0, max: 25 },
@@ -79,10 +78,20 @@ function hasAuthSession() {
 
 function Shop() {
   const { totalItems } = useCart();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearchTerm = searchParams.get('search') ?? '';
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAuthSession());
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [sellersLoading, setSellersLoading] = useState(true);
+  const [sellersError, setSellersError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const filterToggleRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -146,6 +155,71 @@ function Shop() {
     setSearchParams(nextParams);
   };
 
+  const retryProducts = useCallback(async () => {
+    setProductsLoading(true);
+    setProductsError(null);
+    try {
+      setProducts(await getProducts());
+    } catch {
+      setProductsError('Unable to load products.');
+    } finally {
+      setProductsLoading(false);
+    }
+  }, []);
+
+  const retrySellers = useCallback(async () => {
+    setSellersLoading(true);
+    setSellersError(null);
+    try {
+      setSellers(await getPublicSellers());
+    } catch {
+      setSellersError('Unable to load makers.');
+    } finally {
+      setSellersLoading(false);
+    }
+  }, []);
+
+  const retryCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+    try {
+      setCategories(await getCategories());
+    } catch {
+      setCategoriesError('Unable to load categories.');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadInitialData = async () => {
+      const productRequest = getProducts()
+        .then((data) => { if (active) setProducts(data); })
+        .catch(() => { if (active) setProductsError('Unable to load products.'); })
+        .finally(() => { if (active) setProductsLoading(false); });
+      const sellerRequest = getPublicSellers()
+        .then((data) => { if (active) setSellers(data); })
+        .catch(() => { if (active) setSellersError('Unable to load makers.'); })
+        .finally(() => { if (active) setSellersLoading(false); });
+      const categoryRequest = getCategories()
+        .then((data) => { if (active) setCategories(data); })
+        .catch(() => { if (active) setCategoriesError('Unable to load categories.'); })
+        .finally(() => { if (active) setCategoriesLoading(false); });
+
+      await Promise.all([productRequest, sellerRequest, categoryRequest]);
+    };
+
+    void loadInitialData();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (location.hash === '#makers' && !sellersLoading) {
+      document.getElementById('makers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location.hash, sellersLoading]);
+
   useEffect(() => {
     const syncAuthState = () => setIsLoggedIn(hasAuthSession());
 
@@ -177,6 +251,10 @@ function Shop() {
   }, [isDesktop, isFiltersOpen]);
 
   useEffect(() => {
+    if (categoriesLoading || categoriesError) {
+      return;
+    }
+
     if (category && !selectedCategory) {
       const nextParams = new URLSearchParams(searchParams);
       nextParams.delete('category');
@@ -190,7 +268,7 @@ function Shop() {
       nextParams.delete('subcategory');
       setSearchParams(nextParams, { replace: true });
     }
-  }, [activeSubcategory, category, searchParams, selectedCategory, setSearchParams, subcategory]);
+  }, [activeSubcategory, categoriesError, categoriesLoading, category, searchParams, selectedCategory, setSearchParams, subcategory]);
 
   const activePriceBucket = PRICE_BUCKETS.find((bucket) => bucket.id === priceBucket);
 
@@ -200,7 +278,13 @@ function Shop() {
       ? products.filter((product) => product.collection === collection)
       : products;
     const categoryProducts = activeCategory
-      ? collectionProducts.filter((product) => product.category === activeCategory)
+      ? collectionProducts.filter((product) => (
+        Boolean(selectedCategory && (
+          (product.category !== undefined
+            && (product.category === selectedCategory.slug || product.category === selectedCategory.id))
+          || (selectedCategory.apiId !== undefined && product.category_id === selectedCategory.apiId)
+        ))
+      ))
       : collectionProducts;
     const subcategoryProducts = activeSubcategory
       ? categoryProducts.filter((product) => product.subcategory === activeSubcategory)
@@ -242,7 +326,7 @@ function Shop() {
     }
 
     return sortedProducts;
-  }, [activeCategory, activePriceBucket, activeSubcategory, collection, intention, searchTerm, sort]);
+  }, [activeCategory, activePriceBucket, activeSubcategory, collection, intention, products, searchTerm, selectedCategory, sort]);
 
   const filteredSellers = useMemo(() => {
     if (collection) {
@@ -259,7 +343,7 @@ function Shop() {
       const haystack = [seller.name, seller.specialty, seller.bio].join(' ').toLowerCase();
       return haystack.includes(normalized);
     });
-  }, [collection, searchTerm]);
+  }, [collection, searchTerm, sellers]);
 
   return (
     <div className="shop-page">
@@ -357,6 +441,13 @@ function Shop() {
             aria-modal={!isDesktop}
             tabIndex={-1}
           >
+            {categoriesLoading && <p className="shop-data-state" role="status">Loading categories...</p>}
+            {!categoriesLoading && categoriesError && (
+              <div className="shop-data-state" role="alert">
+                <p>{categoriesError}</p>
+                <button type="button" className="shop-clear-search" onClick={() => void retryCategories()}>Retry loading categories</button>
+              </div>
+            )}
             <DepartmentSidebar
               key={collection}
               department={collection as 'purely-handmade' | 'digital-creations' | 'custom-printing'}
@@ -381,7 +472,7 @@ function Shop() {
 
           <div className="shop-main">
             <div className="shop-toolbar">
-              {(searchTerm || intention || category || priceBucket) ? (
+              {!productsLoading && !productsError && (searchTerm || intention || category || priceBucket) ? (
                 <p className="shop-results-summary">
                   {filteredProducts.length} result{filteredProducts.length === 1 ? '' : 's'}
                   {searchTerm && ` for “${searchTerm}”`}
@@ -404,7 +495,14 @@ function Shop() {
               </label>
             </div>
 
-            {filteredProducts.length > 0 ? (
+            {productsLoading ? (
+              <p className="shop-data-state" role="status">Loading products...</p>
+            ) : productsError ? (
+              <div className="shop-data-state" role="alert">
+                <p>{productsError}</p>
+                <button type="button" className="shop-clear-search" onClick={() => void retryProducts()}>Retry loading products</button>
+              </div>
+            ) : filteredProducts.length > 0 ? (
               <section className="shop-grid" aria-label="Shop products">
                 {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
@@ -451,9 +549,9 @@ function Shop() {
             </div>
           </section>
 
-          {(searchTerm || intention || filteredProducts.length > 0) && (
+          {(productsLoading || productsError || searchTerm || intention || filteredProducts.length > 0) && (
             <div className="shop-toolbar">
-              {(searchTerm || intention) ? (
+              {!productsLoading && !productsError && (searchTerm || intention) ? (
                 <p className="shop-results-summary">
                   {filteredProducts.length + filteredSellers.length} result{filteredProducts.length + filteredSellers.length === 1 ? '' : 's'}
                   {searchTerm && ` for “${searchTerm}”`}
@@ -461,7 +559,7 @@ function Shop() {
                 </p>
               ) : <span />}
 
-              {filteredProducts.length > 0 && (
+              {!productsLoading && !productsError && filteredProducts.length > 0 && (
                 <label className="shop-sort">
                   <span>Sort by</span>
                   <select value={sort} onChange={(event) => selectSort(event.target.value)}>
@@ -476,7 +574,14 @@ function Shop() {
             </div>
           )}
 
-          {filteredProducts.length > 0 ? (
+          {productsLoading ? (
+            <p className="shop-data-state" role="status">Loading products...</p>
+          ) : productsError ? (
+            <div className="shop-data-state" role="alert">
+              <p>{productsError}</p>
+              <button type="button" className="shop-clear-search" onClick={() => void retryProducts()}>Retry loading products</button>
+            </div>
+          ) : filteredProducts.length > 0 ? (
             <section className="shop-grid" aria-label="Shop products">
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
@@ -494,20 +599,33 @@ function Shop() {
         </>
       )}
 
-      {filteredSellers.length > 0 && (
-        <section className="shop-sellers" aria-label="Seller search results">
+      {!collection && (
+        <section id="makers" className="shop-sellers" aria-label="Meet the makers">
           <div className="section-heading section-heading--row">
             <div>
               <p className="eyebrow">Shop by maker</p>
-              <h2>Matching sellers</h2>
+              <h2>Meet the Makers</h2>
             </div>
           </div>
 
-          <div className="shop-sellers-grid">
-            {filteredSellers.map((seller) => (
-              <SellerCard key={seller.id} seller={seller} />
-            ))}
-          </div>
+          {sellersLoading ? (
+            <p className="shop-data-state" role="status">Loading makers...</p>
+          ) : sellersError ? (
+            <div className="shop-data-state" role="alert">
+              <p>{sellersError}</p>
+              <button type="button" className="shop-clear-search" onClick={() => void retrySellers()}>Retry loading makers</button>
+            </div>
+          ) : filteredSellers.length > 0 ? (
+            <div className="shop-sellers-grid">
+              {filteredSellers.map((seller) => (
+                <SellerCard key={seller.id} seller={seller} />
+              ))}
+            </div>
+          ) : (
+            <p className="shop-data-state" role="status">
+              {searchTerm ? 'No makers match your search.' : 'No makers available yet.'}
+            </p>
+          )}
         </section>
       )}
     </div>

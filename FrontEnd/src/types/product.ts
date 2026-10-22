@@ -5,7 +5,7 @@ export interface Product {
 	title: string;
 	description?: string;
 	price: number;
-	image?: string;
+	image?: string | null;
 	images?: string[];
 	collection?: 'custom-printing' | 'purely-handmade' | 'digital-creations';
 	category?: string;
@@ -13,6 +13,7 @@ export interface Product {
 	subcategory?: string;
 	intentions?: string[];
 	seller?: string;
+	seller_id?: number;
 	creator: string;
 	tag?: string;
 	rating?: number;

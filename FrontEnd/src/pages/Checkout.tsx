@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import ProductImage from '../components/ProductImage';
 import { useCart } from '../context/CartContext';
 import { products } from '../data/products';
 import '../styles/checkout.css';
@@ -233,7 +234,12 @@ function Checkout() {
 					<div className="checkout-summary__list">
 						{cartProducts.map(({ item, product }) => (
 							<div className="checkout-summary__item" key={product.id}>
-								<img src={product.image} alt={product.title} />
+								<ProductImage
+									image={product.image}
+									alt={product.title}
+									className="checkout-summary__image"
+									fallbackClassName="checkout-summary__image-placeholder"
+								/>
 								<div className="checkout-summary__item-details">
 									<span>{product.title}</span>
 									<span className="checkout-summary__item-quantity">Qty {item.quantity}</span>

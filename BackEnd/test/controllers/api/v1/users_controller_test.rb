@@ -48,6 +48,23 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
 
   # --- Authentication on /me ---
 
+  test "seller registration accepts public profile fields" do
+    post "/api/v1/users", params: {
+      user: {
+        email: "new_seller@example.com", password: "password123", role: "seller",
+        public_name: "New Studio", image_url: "https://example.com/studio.jpg",
+        specialty: "Textiles", bio: "Handwoven goods."
+      }
+    }
+
+    assert_response :created
+    seller = User.find_by!(email: "new_seller@example.com")
+    assert_equal "New Studio", seller.public_name
+    assert_equal "https://example.com/studio.jpg", seller.image_url
+    assert_equal "Textiles", seller.specialty
+    assert_equal "Handwoven goods.", seller.bio
+  end
+
   test "me without a token is unauthorized" do
     get "/api/v1/users/me"
 

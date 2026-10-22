@@ -37,6 +37,10 @@ class Api::V1::UsersController < Api::V1::BaseController
       :email,
       :password,
       :password_confirmation,
+      :public_name,
+      :image_url,
+      :specialty,
+      :bio,
       :role
     )
     permitted[:role] = "customer" if permitted[:role] == "administrator"

@@ -2,7 +2,7 @@ module Api
   module V1
     class ProductsController < BaseController
       def index
-        products = Product.all
+        products = Product.with_attached_images.all
 
         render json: {
           data: products.map { |product| ProductSerializer.new(product).as_json },
@@ -15,7 +15,7 @@ module Api
       end
 
       def show
-        product = Product.find(params[:id])
+        product = Product.with_attached_images.find(params[:id])
 
         render json: {
           data: ProductSerializer.new(product).as_json

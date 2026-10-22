@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import api from './api';
-import { getProductsByCategory } from './productApi';
+import { getProductById, getProducts, getProductsByCategory } from './productApi';
 
 vi.mock('./api', () => ({
   default: {
@@ -10,6 +10,58 @@ vi.mock('./api', () => ({
 }));
 
 const getMock = vi.mocked(api.get);
+
+describe('Rails product responses', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+  });
+
+  it('normalizes Rails decimal prices for all product consumers', async () => {
+    getMock.mockResolvedValue({ data: { data: [
+      {
+        id: 42,
+        title: 'API bowl',
+        price: '19.99',
+        creator: 'Maker #7',
+        image: '/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+        images: ['/rails/active_storage/blobs/redirect/signed-id/bowl.png'],
+      },
+      { id: 43, title: 'Free pattern', price: 0, creator: 'Maker #7' },
+    ] } });
+    const products = await getProducts();
+    expect(getMock).toHaveBeenCalledWith('/products');
+    expect(products.map((product) => product.price.toFixed(2))).toEqual(['19.99', '0.00']);
+    expect(products[0].image).toBe('http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png');
+    expect(products[0].images).toEqual([products[0].image]);
+  });
+
+  it('loads and normalizes an individual API product', async () => {
+    getMock.mockResolvedValue({ data: { data: { id: 42, price: '9.99' } } });
+    await expect(getProductById('42')).resolves.toMatchObject({ id: 42, price: 9.99 });
+    expect(getMock).toHaveBeenCalledWith('/products/42');
+  });
+
+  it('resolves backend-relative image paths to the API origin', async () => {
+    getMock.mockResolvedValue({ data: { data: [
+      { id: 52, title: 'Mocked mug', price: 12, creator: 'Maker', image: '/product-images/moonlit-clay-mug.png' },
+    ] } });
+
+    await expect(getProducts()).resolves.toMatchObject([
+      { image: 'http://localhost:3000/product-images/moonlit-clay-mug.png' },
+    ]);
+  });
+
+  it.each(['', 'invalid', 'Infinity', '-1'])('rejects invalid price %s rather than rendering a misleading price', async (price) => {
+    getMock.mockResolvedValue({ data: { data: [{ id: 42, price }] } });
+    await expect(getProducts()).rejects.toThrow('Invalid price for product 42');
+  });
+
+  it('propagates request failures to the page error state', async () => {
+    getMock.mockRejectedValue(new Error('Network unavailable'));
+    await expect(getProducts()).rejects.toThrow('Network unavailable');
+    await expect(getProductById('42')).rejects.toThrow('Network unavailable');
+  });
+});
 
 describe('getProductsByCategory', () => {
   beforeEach(() => {

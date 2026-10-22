@@ -12,7 +12,7 @@ export const products: Product[] = [
     subcategory: 'Other Ceramic & Clay Creations',
     intentions: ['Home', 'Creativity', 'Self-Care'],
     rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/moonlit-clay-mug.png',
   },
   {
     id: 2,
@@ -25,7 +25,7 @@ export const products: Product[] = [
     subcategory: 'Candle Sets',
     intentions: ['Protection', 'Home', 'Spiritual Growth'],
     rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1602872029706-5f3b8d5d7c4f?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/botanical-candle-set.png',
   },
   {
     id: 3,
@@ -38,7 +38,7 @@ export const products: Product[] = [
     subcategory: 'Digital Planners',
     intentions: ['Self-Reflection', 'Moon & Cycles', 'Manifestation'],
     rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/celestial-journal.png',
   },
   {
     id: 4,
@@ -51,7 +51,7 @@ export const products: Product[] = [
     subcategory: 'Herb Bundles',
     intentions: ['Healing', 'Self-Care'],
     rating: 4.7,
-    image: 'https://images.unsplash.com/photo-1497250681960-ef046c08a56e?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/pressed-herb-bundle.png',
   },
   {
     id: 101,
@@ -64,7 +64,7 @@ export const products: Product[] = [
     subcategory: 'Tumblers',
     intentions: ['Home', 'Abundance'],
     rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1517705008128-361805f42e86?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/amber-glass-tumbler.png',
   },
   {
     id: 102,
@@ -77,7 +77,7 @@ export const products: Product[] = [
     subcategory: 'Textile Wearables',
     intentions: ['Home', 'Healing', 'Self-Care'],
     rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/sage-linen-throw.png',
   },
   {
     id: 103,
@@ -90,7 +90,7 @@ export const products: Product[] = [
     subcategory: 'Art Prints',
     intentions: ['Creativity', 'Abundance'],
     rating: 4.7,
-    image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/wildflower-press-set.png',
   },
   {
     id: 104,
@@ -103,7 +103,7 @@ export const products: Product[] = [
     subcategory: 'Digital Oracle Decks',
     intentions: ['Intuition', 'Spiritual Growth'],
     rating: 5.0,
-    image: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/oracle-card-deck.png',
   },
   {
     id: 105,
@@ -116,7 +116,7 @@ export const products: Product[] = [
     subcategory: 'Ritual Bath Blends',
     intentions: ['Healing', 'Self-Care'],
     rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/lavender-bath-ritual.png',
   },
   {
     id: 106,
@@ -129,7 +129,7 @@ export const products: Product[] = [
     subcategory: 'Herb Bundles',
     intentions: ['Home', 'Healing'],
     rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1603905179139-db12ab535f1b?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/hanging-herb-drying-kit.png',
   },
   {
     id: 107,
@@ -142,7 +142,7 @@ export const products: Product[] = [
     subcategory: 'Digital Journal Pages',
     intentions: ['Shadow Work', 'Self-Reflection'],
     rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/whispering-journal.png',
   },
   {
     id: 108,
@@ -155,6 +155,6 @@ export const products: Product[] = [
     subcategory: 'Candle Sets',
     intentions: ['Protection', 'Seasonal', 'Home'],
     rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1602872029706-5f3b8d5d7c4f?auto=format&fit=crop&w=900&q=80',
+    image: '/product-images/terracotta-candle-trio.png',
   },
 ];

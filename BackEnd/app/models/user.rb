@@ -5,6 +5,9 @@ class User < ApplicationRecord
 
   validates :email, presence: true, uniqueness: true
   validates :role, presence: true, inclusion: { in: %w[customer seller administrator] }
+  validates :public_name, :specialty, length: { maximum: 255 }
+  validates :bio, length: { maximum: 2000 }
+  validates :image_url, format: { with: /\Ahttps?:\/\/[^\s]+\z/ }, allow_blank: true
 
   # Defense-in-depth: never let password_digest leak through serialization,
   # even if a controller accidentally renders a raw user object.

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 
+import ProductImage from '../components/ProductImage';
 import { useCart } from '../context/CartContext';
 import { products } from '../data/products';
 import '../styles/cart.css';
@@ -49,7 +50,12 @@ function Cart() {
 						{cartProducts.map(({ item, product }) => (
 							<article className="cart-item" key={product.id}>
 								<Link className="cart-item__image-link" to={`/product/${product.id}`}>
-									<img src={product.image} alt={product.title} />
+									<ProductImage
+										image={product.image}
+										alt={product.title}
+										className="cart-item__image"
+										fallbackClassName="cart-item__image-placeholder"
+									/>
 								</Link>
 								<div className="cart-item__details">
 									<Link to={`/product/${product.id}`}>

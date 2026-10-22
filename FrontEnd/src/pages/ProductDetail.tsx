@@ -1,37 +1,60 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 
 import ProductCard from '../components/ProductCard';
+import ProductImage from '../components/ProductImage';
 import { getStarSegments } from '../components/StarRating';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { products } from '../data/products';
-import { getSellers } from '../services/sellerApi';
+import { getPublicSellerById, getSellers } from '../services/sellerApi';
+import { getProductById, getProducts } from '../services/productApi';
+import type { Product, Seller } from '../types';
 import '../styles/product-detail.css';
 
 function ProductDetail() {
   const { id } = useParams();
-  return <ProductDetailContent key={id} productId={id} />;
+  return <ProductDetailLoader key={id} productId={id} />;
 }
 
-function ProductDetailContent({ productId }: { productId?: string }) {
-  const numericProductId = Number(productId);
-  const { addToCart, isInCart } = useCart();
-  const { toggleWishlist, isWishlisted } = useWishlist();
+function ProductDetailLoader({ productId }: { productId?: string }) {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [relatedError, setRelatedError] = useState(false);
 
-  const product = useMemo(
-    () => products.find((item) => item.id === numericProductId),
-    [numericProductId],
-  );
-  const seller = product ? getSellers().find((item) => item.name === product.creator) : undefined;
+  useEffect(() => {
+    let active = true;
+    if (!productId) return;
 
-  const [selectedImage, setSelectedImage] = useState(product?.image ?? '');
-  const [quantity, setQuantity] = useState(1);
+    void getProductById(productId)
+      .then((data) => { if (active) setProduct(data); })
+      .catch((error: unknown) => {
+        if (active) setError(!(isAxiosError(error) && error.response?.status === 404));
+      })
+      .finally(() => { if (active) setLoading(false); });
+    void getProducts()
+      .then((data) => {
+        if (active) setRelatedProducts(data.filter((item) => String(item.id) !== productId).slice(0, 3));
+      })
+      .catch(() => { if (active) setRelatedError(true); });
 
-  const relatedProducts = useMemo(
-    () => (product ? products.filter((item) => item.id !== product.id).slice(0, 3) : []),
-    [product],
-  );
+    return () => { active = false; };
+  }, [productId]);
+
+  if (productId && loading) {
+    return <section className="product-detail product-detail--empty" role="status">Loading product...</section>;
+  }
+
+  if (error) {
+    return (
+      <section className="product-detail product-detail--empty">
+        <p role="alert">Unable to load this product.</p>
+        <Link className="product-detail__back-link" to="/shop">Return to the shop</Link>
+      </section>
+    );
+  }
 
   if (!product) {
     return (
@@ -44,6 +67,34 @@ function ProductDetailContent({ productId }: { productId?: string }) {
       </section>
     );
   }
+
+  return <ProductDetailContent product={product} relatedProducts={relatedProducts} relatedError={relatedError} />;
+}
+
+function ProductDetailContent({ product, relatedProducts, relatedError }: {
+  product: Product;
+  relatedProducts: Product[];
+  relatedError: boolean;
+}) {
+  const { addToCart, isInCart } = useCart();
+  const { toggleWishlist, isWishlisted } = useWishlist();
+  const [publicSeller, setPublicSeller] = useState<Seller | null>(null);
+  const [sellerError, setSellerError] = useState(false);
+  const seller = product.seller_id !== undefined
+    ? publicSeller
+    : getSellers().find((item) => item.name === product.creator);
+  const [selectedImage, setSelectedImage] = useState(product.image ?? '');
+  const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    let active = true;
+    if (product.seller_id === undefined) return;
+
+    void getPublicSellerById(String(product.seller_id))
+      .then((data) => { if (active) setPublicSeller(data); })
+      .catch(() => { if (active) setSellerError(true); });
+    return () => { active = false; };
+  }, [product.seller_id]);
 
   const gallery = product.images && product.images.length > 0
     ? product.images
@@ -80,19 +131,23 @@ function ProductDetailContent({ productId }: { productId?: string }) {
                 onClick={() => setSelectedImage(image)}
                 aria-label={`View product image ${index + 1}`}
               >
-                <img src={image} alt={`${product.title} view ${index + 1}`} />
+                <ProductImage
+                  image={image}
+                  alt={`${product.title} view ${index + 1}`}
+                  className="product-detail__thumb-image"
+                  fallbackClassName="product-detail__thumb-placeholder"
+                />
               </button>
             ))}
           </div>
 
           <div className="product-detail__main-image-wrap">
-            {mainImage && (
-              <img
-                className="product-detail__main-image"
-                src={mainImage}
-                alt={product.title}
-              />
-            )}
+            <ProductImage
+              image={mainImage}
+              alt={product.title}
+              className="product-detail__main-image"
+              fallbackClassName="product-detail__main-image-placeholder"
+            />
           </div>
         </div>
 
@@ -117,8 +172,9 @@ function ProductDetailContent({ productId }: { productId?: string }) {
           </p>
 
           <div className="product-detail__seller">
-            <span>Made by {seller ? <Link to={`/seller/${seller.id}`}><strong>{product.creator}</strong></Link> : <strong>{product.creator}</strong>}</span>
+            <span>Made by {seller ? <Link to={`/seller/${seller.id}`}><strong>{seller.name}</strong></Link> : <strong>{product.creator}</strong>}</span>
             {seller && <Link className="product-detail__shop-link" to={`/seller/${seller.id}`}>Visit shop</Link>}
+            {sellerError && <p role="alert">Unable to load this maker's profile.</p>}
           </div>
 
           <div className="product-detail__actions">
@@ -197,6 +253,7 @@ function ProductDetailContent({ productId }: { productId?: string }) {
         </section>
       </div>
 
+      {relatedError && <p role="alert">Unable to load related products.</p>}
       {relatedProducts.length > 0 && (
         <section className="product-detail__related" aria-label="Related products">
           <div className="product-detail__related-header">

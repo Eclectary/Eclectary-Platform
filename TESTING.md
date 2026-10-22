@@ -101,6 +101,34 @@ npm test
 npm test -- --run
 ```
 
+### Homepage-to-marketplace integration
+
+The homepage, Shop, public numeric seller profiles, and product detail pages
+use the shared API services. Product service tests include Rails decimal-string
+prices, which must be normalized before rendering prices or adding to the cart.
+Product detail tests cover API-only IDs, loading, missing products, network
+errors, missing images, public seller links, and independent related-product
+and seller-profile failures. Footer tests check the existing Shop and makers
+navigation destinations.
+
+```powershell
+npm test -- --run
+npm run build
+```
+
+For live verification, run the existing Rails API on port 3000 and the frontend
+on `http://localhost:5173`, the origin allowed by the current CORS configuration.
+Check `/api/v1/health`, `/api/v1/products`, `/api/v1/categories`, and
+`/api/v1/sellers`, then follow homepage, Shop, maker, and product links using
+IDs from those responses. Missing product images should show "Image unavailable".
+Collection and intention filters require corresponding product metadata; do not
+substitute mock products for incomplete API data.
+
+The Rails test environment uses `eclectary_test`, independently of
+`DATABASE_NAME`. Test boot also fails if Rails resolves test and development to
+the same database, including when a `DATABASE_URL` override takes precedence.
+Rails fixtures can replace data in the selected test database.
+
 ### View test UI
 ```bash
 npm run test:ui

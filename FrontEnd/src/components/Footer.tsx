@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import "../styles/footer.css";
 
 const FEEDBACK_URL = import.meta.env.VITE_FEEDBACK_URL || "http://localhost:3000";
@@ -15,10 +16,10 @@ function Footer() {
           <div className="footer-col">
             <h3>SHOP</h3>
             <ul>
-              <li><a href="#">All Products</a></li>
-              <li><a href="#">Purely Handmade</a></li>
-              <li><a href="#">Digital Creations</a></li>
-              <li><a href="#">Custom Printing</a></li>
+              <li><Link to="/shop">All Products</Link></li>
+              <li><Link to="/shop?collection=purely-handmade">Purely Handmade</Link></li>
+              <li><Link to="/shop?collection=digital-creations">Digital Creations</Link></li>
+              <li><Link to="/shop?collection=custom-printing">Custom Printing</Link></li>
             </ul>
           </div>
 
@@ -36,7 +37,7 @@ function Footer() {
             <ul>
               <li><a href="#">About Eclectary</a></li>
               <li><a href="#">Our Mission</a></li>
-              <li><a href="#">Meet the Creators</a></li>
+              <li><Link to="/shop#makers">Meet the Creators</Link></li>
               <li><a href="#">Blog</a></li>
             </ul>
           </div>

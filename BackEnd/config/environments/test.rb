@@ -50,4 +50,13 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  config.after_initialize do
+    test_database = ActiveRecord::Base.configurations.configs_for(env_name: "test").first.database
+    development_database = ActiveRecord::Base.configurations.configs_for(env_name: "development").first.database
+
+    if test_database == development_database
+      raise "Test and development environments must use different databases (both resolve to #{test_database.inspect})."
+    end
+  end
 end

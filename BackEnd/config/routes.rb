@@ -17,6 +17,7 @@ Rails.application.routes.draw do
       get "users/me", to: "users#me"
       resources :products, only: %i[index show]
       resources :categories, only: %i[index show]
+      resources :sellers, only: %i[index show]
       resources :orders, only: %i[index show create]
       post "login", to: "sessions#create"
     end

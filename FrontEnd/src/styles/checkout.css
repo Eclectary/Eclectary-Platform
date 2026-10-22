@@ -170,12 +170,23 @@
   gap: var(--space-3);
 }
 
-.checkout-summary__item img {
+.checkout-summary__item .checkout-summary__image,
+.checkout-summary__item .checkout-summary__image-placeholder {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-sm);
   object-fit: cover;
   background: var(--beige-100);
+}
+
+.checkout-summary__item .checkout-summary__image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  color: var(--neutral-600);
+  font-size: 0.55rem;
+  text-align: center;
 }
 
 .checkout-summary__item-details {
