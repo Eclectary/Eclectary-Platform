@@ -1,4 +1,4 @@
-<ul class="navbar-nav ms-auto root_links">
+/<ul class="navbar-nav ms-auto root_links">
   <% actions(:root).select(&:show_in_navigation).each do |action| %>
     <li class="nav-item <%= action.action_name %>_root_link">
       <%= link_to wording_for(:menu, action), { action: action.action_name, controller: 'rails_admin_next/main' }, {class: ['nav-link']}.merge(action.turbo? ? {} : {data: {turbo: 'false'}}) %>
