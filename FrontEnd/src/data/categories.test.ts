@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-
-import { categories, customPrintingCategories, digitalCategories, handmadeCategories, isValidCategorySelection } from './categories';
+import type { Category } from '../types/category';
+import { categories, customPrintingCategories, digitalCategories, getProductCollection, handmadeCategories, isValidCategorySelection } from './categories';
 
 describe('Handmade taxonomy', () => {
   it('contains the requested top-level Handmade categories exactly once', () => {
@@ -53,5 +53,22 @@ describe('Handmade taxonomy', () => {
       .toContain('Printed Tarot Products');
     expect(isValidCategorySelection('custom-printing', 'custom-art-prints-wall-decor', 'Art Prints')).toBe(true);
     expect(isValidCategorySelection('digital-creations', 'custom-art-prints-wall-decor', 'Art Prints')).toBe(false);
+  });
+});
+
+describe('getProductCollection', () => {
+  const departmentCategories: Category[] = [
+    { id: 'ceramics-clay', apiId: 77, slug: 'ceramics-clay', name: 'Ceramics & Clay', collection: 'purely-handmade' },
+    { id: 'digital-art', apiId: 88, slug: 'digital-art', name: 'Digital Art', collection: 'digital-creations' },
+  ];
+
+  it('derives the collection from the product category via the Rails API id', () => {
+    expect(getProductCollection({ category_id: 77 }, departmentCategories)).toBe('purely-handmade');
+    expect(getProductCollection({ category_id: 88 }, departmentCategories)).toBe('digital-creations');
+  });
+
+  it('returns undefined when the product has no resolvable category', () => {
+    expect(getProductCollection({}, departmentCategories)).toBeUndefined();
+    expect(getProductCollection({ category_id: 999 }, departmentCategories)).toBeUndefined();
   });
 });

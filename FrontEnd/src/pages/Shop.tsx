@@ -11,6 +11,7 @@ import { intentions } from '../data/intentions';
 import { getProducts } from '../services/productApi';
 import { getCategories } from '../services/categoryApi';
 import { getPublicSellers } from '../services/sellerApi';
+import { getProductCollection } from '../data/categories';
 import type { Category, Product, Seller } from '../types';
 
 import '../styles/shop.css';
@@ -275,7 +276,7 @@ function Shop() {
   const filteredProducts = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
     const collectionProducts = collection
-      ? products.filter((product) => product.collection === collection)
+      ? products.filter((product) => getProductCollection(product, categories) === collection)
       : products;
     const categoryProducts = activeCategory
       ? collectionProducts.filter((product) => (
@@ -326,7 +327,7 @@ function Shop() {
     }
 
     return sortedProducts;
-  }, [activeCategory, activePriceBucket, activeSubcategory, collection, intention, products, searchTerm, selectedCategory, sort]);
+  }, [activeCategory, activePriceBucket, activeSubcategory, categories, collection, intention, products, searchTerm, selectedCategory, sort]);
 
   const filteredSellers = useMemo(() => {
     if (collection) {
