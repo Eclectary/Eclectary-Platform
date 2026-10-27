@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import ProductCard from '../components/ProductCard';
@@ -10,12 +10,21 @@ import { getSellersByCategory } from '../services/sellerApi';
 import type { Category as CategoryType, Product } from '../types';
 import '../styles/category-detail.css';
 
+type CategorySort = 'newest' | 'price-asc' | 'price-desc';
+
+const SORT_OPTIONS: Array<{ id: CategorySort; label: string }> = [
+  { id: 'newest', label: 'Newest' },
+  { id: 'price-asc', label: 'Price: Low \u2192 High' },
+  { id: 'price-desc', label: 'Price: High \u2192 Low' },
+];
+
 function Category() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const localCategory = id ? getCategory(id) : undefined;
   const [apiCategories, setApiCategories] = useState<CategoryType[] | null>(null);
   const [categoryLookupError, setCategoryLookupError] = useState(false);
+  const [sort, setSort] = useState<CategorySort>('newest');
   const subcategory = searchParams.get('subcategory') ?? '';
   const apiCategory = apiCategories?.find((item) => item.slug === id);
   const category = apiCategory ?? localCategory;
@@ -35,6 +44,22 @@ function Category() {
   ));
   const categoryProducts = !isLoading && productsResult ? productsResult.products : [];
   const productsError = !isLoading && (categoryLookupError || productsResult?.error);
+  const sortedProducts = useMemo(() => {
+    const products = [...categoryProducts];
+
+    switch (sort) {
+      case 'price-asc':
+        return products.sort((a, b) => a.price - b.price);
+      case 'price-desc':
+        return products.sort((a, b) => b.price - a.price);
+      case 'newest':
+        return products.sort((a, b) => {
+          const aCreatedAt = a.created_at ? Date.parse(a.created_at) : 0;
+          const bCreatedAt = b.created_at ? Date.parse(b.created_at) : 0;
+          return bCreatedAt - aCreatedAt;
+        });
+    }
+  }, [categoryProducts, sort]);
 
   useEffect(() => {
     let active = true;
@@ -140,6 +165,17 @@ function Category() {
         </div>
       </header>
 
+      <div className="category-detail__toolbar">
+        <label>
+          <span>Sort by</span>
+          <select value={sort} onChange={(event) => setSort(event.target.value as CategorySort)}>
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {isLoading ? (
         <div className="category-detail__empty-state" role="status">
           <p>Loading products...</p>
@@ -149,9 +185,9 @@ function Category() {
           <h2>{categoryLookupError ? 'Unable to load category information.' : 'Unable to load products.'}</h2>
           <p>Please try again later.</p>
         </div>
-      ) : categoryProducts.length > 0 ? (
+      ) : sortedProducts.length > 0 ? (
         <div className="category-detail__grid" aria-label={`${category.name} products`}>
-          {categoryProducts.map((product) => (
+          {sortedProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>

@@ -1,10 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import ProductCard from '../components/ProductCard';
 import type { Product } from '../types/product';
 import { WishlistProvider } from '../context/WishlistContext';
+import api from '../services/api';
+import { getProducts } from '../services/productApi';
+
+vi.mock('../services/api', () => ({
+  default: {
+    get: vi.fn(),
+  },
+}));
+
+const getMock = vi.mocked(api.get);
 
 const mockProduct: Product = {
   id: 1,
@@ -27,6 +37,34 @@ const renderProductCard = (product: Product = mockProduct) => {
 };
 
 describe('ProductCard', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+  });
+
+  it('renders a Rails-shaped product after API normalization', async () => {
+    getMock.mockResolvedValue({
+      data: {
+        data: [{
+          id: 42,
+          title: 'Rails Mug',
+          price: '18.50',
+          creator: 'Rails Maker',
+          category: '7',
+          category_id: 7,
+          created_at: '2026-03-01T12:00:00Z',
+        }],
+      },
+    });
+
+    const [product] = await getProducts();
+    renderProductCard(product);
+
+    expect(screen.getByRole('heading', { name: 'Rails Mug' })).toBeInTheDocument();
+    expect(screen.getByText('by Rails Maker')).toBeInTheDocument();
+    expect(screen.getByText('$18.50')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View Rails Mug' })).toHaveAttribute('href', '/product/42');
+  });
+
   it('should render product card with all required information', () => {
     renderProductCard();
 

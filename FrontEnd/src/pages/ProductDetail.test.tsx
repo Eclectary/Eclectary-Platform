@@ -101,7 +101,20 @@ const renderProductDetailWithId = (productId: string | number = 1) => {
 describe('ProductDetail', () => {
   it('loads an API product outside the mock catalog and links its real seller by ID', async () => {
     vi.mocked(getProductById).mockResolvedValue({
-      id: 987654, title: 'Live API bowl', price: 19.99, creator: 'Old maker name', seller_id: 42,
+      id: 987654,
+      title: 'Live API bowl',
+      description: 'Wheel-thrown stoneware bowl',
+      price: 19.99,
+      creator: 'Old maker name',
+      seller_id: 42,
+      category: '7',
+      category_id: 7,
+      category_name: 'Ceramics',
+      image: 'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+      images: [
+        'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+        'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl-detail.png',
+      ],
     });
     vi.mocked(getProducts).mockResolvedValue([]);
     vi.mocked(getPublicSellerById).mockResolvedValue({
@@ -114,7 +127,13 @@ describe('ProductDetail', () => {
     expect(await screen.findByRole('link', { name: 'Public Clay Studio' })).toHaveAttribute('href', '/seller/42');
     expect(getPublicSellerById).toHaveBeenCalledWith('42');
     expect(screen.getByText('$19.99')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'No image available for Live API bowl' })).toBeInTheDocument();
+    expect(screen.getAllByText('Wheel-thrown stoneware bowl')).toHaveLength(2);
+    expect(screen.getByText('Ceramics')).toBeInTheDocument();
+    expect(screen.queryByText('7')).not.toBeInTheDocument();
+    expect(screen.getByAltText('Live API bowl')).toHaveAttribute(
+      'src',
+      'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+    );
     expect(screen.queryByText('Moonlit Clay Mug')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Related products')).not.toBeInTheDocument();
   });

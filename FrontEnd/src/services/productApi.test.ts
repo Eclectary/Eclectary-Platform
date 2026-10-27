@@ -74,6 +74,28 @@ describe('Rails product responses', () => {
     expect(getMock).toHaveBeenCalledWith('/products/42');
   });
 
+  it('normalizes Rails-relative image paths for an individual API product', async () => {
+    getMock.mockResolvedValue({ data: { data: {
+      id: 42,
+      title: 'API bowl',
+      price: '19.99',
+      creator: 'Maker #7',
+      image: '/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+      images: [
+        '/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+        '/rails/active_storage/blobs/redirect/signed-id/bowl-detail.png',
+      ],
+    } } });
+
+    await expect(getProductById('42')).resolves.toMatchObject({
+      image: 'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+      images: [
+        'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+        'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl-detail.png',
+      ],
+    });
+  });
+
   it('resolves backend-relative image paths to the API origin', async () => {
     getMock.mockResolvedValue({ data: { data: [
       { id: 52, title: 'Mocked mug', price: 12, creator: 'Maker', image: '/product-images/moonlit-clay-mug.png' },
@@ -113,6 +135,22 @@ describe('getProductsByCategory', () => {
 
     await expect(getProductsByCategory(42)).resolves.toMatchObject([
       { id: 1, title: 'Matching item', category_id: 42 },
+    ]);
+  });
+
+  it('filters Rails products by numeric category_id and subcategory together', async () => {
+    getMock.mockResolvedValue({
+      data: {
+        data: [
+          { id: 1, title: 'Matching ring', price: 10, creator: 'Maker', category_id: 42, subcategory: 'Rings' },
+          { id: 2, title: 'Matching necklace', price: 20, creator: 'Maker', category_id: 42, subcategory: 'Necklaces' },
+          { id: 3, title: 'Other ring', price: 30, creator: 'Maker', category_id: 43, subcategory: 'Rings' },
+        ],
+      },
+    });
+
+    await expect(getProductsByCategory(42, 'Rings')).resolves.toMatchObject([
+      { id: 1, title: 'Matching ring', category_id: 42, subcategory: 'Rings' },
     ]);
   });
 

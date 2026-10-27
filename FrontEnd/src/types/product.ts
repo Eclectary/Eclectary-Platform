@@ -10,6 +10,7 @@ export interface Product {
 	collection?: 'custom-printing' | 'purely-handmade' | 'digital-creations';
 	category?: string;
 	category_id?: number;
+	category_name?: string;
 	subcategory?: string;
 	intentions?: string[];
 	seller?: string;
@@ -19,4 +20,5 @@ export interface Product {
 	rating?: number;
 	reviewCount?: number;
 	status?: string;
+	created_at?: string;
 }
