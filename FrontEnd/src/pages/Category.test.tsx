@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -179,6 +179,36 @@ describe('Category asynchronous products', () => {
     expect(await screen.findByText('Silver Ring')).toBeInTheDocument();
     expect(getProductsMock).toHaveBeenCalledWith(42, undefined);
     expect(screen.getByRole('link', { name: 'Back to categories' })).toHaveAttribute('href', '/categories');
+  });
+
+  it('shows a category API error without requesting products', async () => {
+    getCategoriesMock.mockRejectedValue(new Error('Category API unavailable'));
+
+    renderCategory();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load category information.');
+    expect(getProductsMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['newest', ['Mid Newest', 'Cheap Middle', 'Expensive Old']],
+    ['price-asc', ['Cheap Middle', 'Mid Newest', 'Expensive Old']],
+    ['price-desc', ['Expensive Old', 'Mid Newest', 'Cheap Middle']],
+  ] as const)('sorts category products by %s', async (sort, expectedTitles) => {
+    getProductsMock.mockResolvedValue([
+      { id: 1, title: 'Expensive Old', price: 30, creator: 'Maker', created_at: '2026-01-01T12:00:00Z' },
+      { id: 2, title: 'Mid Newest', price: 20, creator: 'Maker', created_at: '2026-03-01T12:00:00Z' },
+      { id: 3, title: 'Cheap Middle', price: 10, creator: 'Maker', created_at: '2026-02-01T12:00:00Z' },
+    ]);
+    const user = userEvent.setup();
+
+    renderCategory();
+    await screen.findByText('Expensive Old');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), sort);
+
+    const productGrid = screen.getByLabelText('Jewelry products');
+    expect(within(productGrid).getAllByText(/^(Expensive Old|Mid Newest|Cheap Middle)$/).map((item) => item.textContent))
+      .toEqual([...expectedTitles]);
   });
 
   it.each(['resolve', 'reject'] as const)('handles a request that %ss after unmount', async (outcome) => {

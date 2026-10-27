@@ -20,15 +20,53 @@ class ApiEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal %w[data pagination], body.keys.sort
     assert_equal products.count, body["data"].length
     assert_equal products.count, body.dig("pagination", "total")
-    assert_equal %w[category category_id created_at creator description id image images price seller_id title updated_at], body["data"].first.keys.sort
+    assert_equal %w[category category_id category_name created_at creator description id image images price seller_id subcategory title updated_at], body["data"].first.keys.sort
 
     product = body["data"].first
     seller = Product.find(product["id"]).seller
 
     assert_equal seller.public_name.presence || "Maker ##{seller.id}", product["creator"]
     refute_equal seller.email, product["creator"]
+    assert_equal Product.find(product["id"]).category.name, product["category_name"]
     assert_nil product["image"]
     assert_equal [], product["images"]
+  end
+
+  test "product detail includes the human-readable category name" do
+    product = products(:one)
+    product.category.update!(name: "Ceramics")
+
+    get "/api/v1/products/#{product.id}"
+
+    assert_response :success
+    body = JSON.parse(response.body).fetch("data")
+    assert_equal product.category_id.to_s, body["category"]
+    assert_equal product.category_id, body["category_id"]
+    assert_equal "Ceramics", body["category_name"]
+  end
+
+  test "unknown product detail returns not found" do
+    get "/api/v1/products/0"
+
+    assert_response :not_found
+  end
+
+  test "product responses include a subcategory or null when absent" do
+    product_with_subcategory = products(:one)
+    product_without_subcategory = products(:two)
+    product_with_subcategory.update!(subcategory: "Rings")
+
+    get "/api/v1/products"
+
+    assert_response :success
+    products_by_id = JSON.parse(response.body).fetch("data").index_by { |product| product.fetch("id") }
+    assert_equal "Rings", products_by_id.fetch(product_with_subcategory.id).fetch("subcategory")
+    assert_nil products_by_id.fetch(product_without_subcategory.id).fetch("subcategory")
+
+    get "/api/v1/products/#{product_with_subcategory.id}"
+
+    assert_response :success
+    assert_equal "Rings", JSON.parse(response.body).dig("data", "subcategory")
   end
 
   test "product detail exposes the primary and all attached image paths" do

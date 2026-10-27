@@ -19,6 +19,8 @@ class ProductSerializer
       seller_id: @product.seller_id,
       category: @product.category_id.to_s,
       category_id: @product.category_id,
+      category_name: @product.category.name,
+      subcategory: @product.subcategory,
       created_at: @product.created_at,
       updated_at: @product.updated_at
     }

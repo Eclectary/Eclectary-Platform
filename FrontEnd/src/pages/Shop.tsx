@@ -80,8 +80,8 @@ function Shop() {
   const { totalItems } = useCart();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialSearchTerm = searchParams.get('search') ?? '';
-  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const urlSearchTerm = searchParams.get('search') ?? '';
+  const [searchTerm, setSearchTerm] = useState(urlSearchTerm);
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAuthSession());
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -125,6 +125,19 @@ function Shop() {
     }
 
     setSearchParams(nextParams);
+  };
+
+  const changeSearchTerm = (nextSearchTerm: string) => {
+    setSearchTerm(nextSearchTerm);
+    if (!nextSearchTerm) {
+      setFilterParam('search', '');
+    }
+  };
+
+  const submitSearch = (nextSearchTerm: string) => {
+    const submittedSearchTerm = nextSearchTerm.trim();
+    setSearchTerm(submittedSearchTerm);
+    setFilterParam('search', submittedSearchTerm);
   };
 
   const selectIntention = (nextIntention: string) => setFilterParam('intention', nextIntention);
@@ -190,6 +203,10 @@ function Shop() {
       setCategoriesLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    setSearchTerm(urlSearchTerm);
+  }, [urlSearchTerm]);
 
   useEffect(() => {
     let active = true;
@@ -301,7 +318,14 @@ function Shop() {
 
     const searchedProducts = normalized
       ? priceProducts.filter((product) => {
-        const haystack = [product.title, product.creator, product.tag].join(' ').toLowerCase();
+        const haystack = [
+          product.title,
+          product.description,
+          product.creator,
+          product.category_name,
+          product.subcategory,
+          product.tag,
+        ].join(' ').toLowerCase();
         return haystack.includes(normalized);
       })
       : priceProducts;
@@ -359,7 +383,7 @@ function Shop() {
               <input
                 type="search"
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                onChange={(event) => changeSearchTerm(event.target.value)}
                 placeholder="Search creations, creators, ideas..."
                 aria-label="Search creations, creators, ideas"
               />
@@ -413,8 +437,8 @@ function Shop() {
       {!collection && (
         <Searchbar
           value={searchTerm}
-          onChange={setSearchTerm}
-          onSubmit={setSearchTerm}
+          onChange={changeSearchTerm}
+          onSubmit={submitSearch}
           className="shop-search"
         />
       )}
@@ -591,7 +615,7 @@ function Shop() {
             <div className="shop-empty-state" aria-live="polite">
               <h2>No products match your search.</h2>
               <p>Try another keyword like “ceramics,” “journal,” or “moss.”</p>
-              <button type="button" className="shop-clear-search" onClick={() => setSearchTerm('')}>
+              <button type="button" className="shop-clear-search" onClick={() => changeSearchTerm('')}>
                 Clear search
               </button>
             </div>

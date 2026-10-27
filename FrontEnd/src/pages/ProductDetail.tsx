@@ -211,7 +211,9 @@ function ProductDetailContent({ product, relatedProducts, relatedError }: {
           <h2>Item details</h2>
           <dl className="product-detail__details">
             <div><dt>Collection</dt><dd>{productType}</dd></div>
-            {product.category && <div><dt>Category</dt><dd>{product.category}</dd></div>}
+            {(product.category_name || product.category) && (
+              <div><dt>Category</dt><dd>{product.category_name || product.category}</dd></div>
+            )}
             {product.tag && <div><dt>Product type</dt><dd>{product.tag}</dd></div>}
             {product.intentions && product.intentions.length > 0 && <div><dt>Intentions</dt><dd>{product.intentions.join(', ')}</dd></div>}
           </dl>
