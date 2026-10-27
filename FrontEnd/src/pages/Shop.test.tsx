@@ -256,3 +256,51 @@ describe('Shop live marketplace data', () => {
     expect(await screen.findByRole('link', { name: "View Maker One's shop" })).toBeInTheDocument();
   });
 });
+
+describe('Department browsing with Rails-shaped API responses', () => {
+  // Categories merged from the Rails API (slug + numeric id) and the local taxonomy metadata.
+  const departmentCategories: Category[] = [
+    { id: 'ceramics-clay', apiId: 77, slug: 'ceramics-clay', name: 'Ceramics & Clay', collection: 'purely-handmade' },
+    { id: 'digital-art', apiId: 88, slug: 'digital-art', name: 'Digital Art', collection: 'digital-creations' },
+  ];
+
+  // Rails-shaped products: the serializer never sends `collection`, only `category_id`
+  // (numeric) and `category` (that id as a string).
+  const departmentProducts: Product[] = [
+    { id: 1, title: 'Handmade Mug', price: 30, creator: 'Maker One', category: '77', category_id: 77 },
+    { id: 2, title: 'Digital Print', price: 10, creator: 'Maker Two', category: '88', category_id: 88 },
+    { id: 3, title: 'Uncategorized Item', price: 20, creator: 'Maker Two' },
+  ];
+
+  beforeEach(() => {
+    getCategoriesMock.mockReset();
+    getCategoriesMock.mockResolvedValue(departmentCategories);
+    getProductsMock.mockReset();
+    getProductsMock.mockResolvedValue(departmentProducts);
+    getPublicSellersMock.mockReset();
+    getPublicSellersMock.mockResolvedValue([]);
+  });
+
+  it('shows a handmade department product under /shop?collection=purely-handmade', async () => {
+    renderShop('/shop?collection=purely-handmade');
+
+    expect(await screen.findByRole('heading', { name: 'Handmade Mug' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Digital Print' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Uncategorized Item' })).not.toBeInTheDocument();
+  });
+
+  it('does not show the product under a different department', async () => {
+    renderShop('/shop?collection=digital-creations');
+
+    expect(await screen.findByRole('heading', { name: 'Digital Print' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Handmade Mug' })).not.toBeInTheDocument();
+  });
+
+  it('displays the product on the unfiltered shop page', async () => {
+    renderShop('/shop');
+
+    expect(await screen.findByRole('heading', { name: 'Handmade Mug' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Digital Print' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Uncategorized Item' })).toBeInTheDocument();
+  });
+});

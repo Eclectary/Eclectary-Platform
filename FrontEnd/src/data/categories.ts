@@ -1,4 +1,4 @@
-import type { Category } from '../types/category';
+import type { Category, Product } from '../types';
 
 export const categories: Category[] = [
 	{ id: 'jewelry-adornments', collection: 'purely-handmade', name: 'Jewelry & Adornments', childSubcategories: ['Necklaces', 'Bracelets', 'Earrings', 'Rings', 'Pendants', 'Talismans & Amulets', 'Mala Beads', 'Hair Adornments', 'Brooches & Pins', 'Custom Jewelry'], image: 'https://images.unsplash.com/photo-1532968961962-8a0cb3a2d0c7?auto=format&fit=crop&w=900&q=80' },
@@ -253,4 +253,17 @@ export const getCategory = (id: string) => categories.find((category) => categor
 export const isValidCategorySelection = (collection: string, categoryId: string, subcategory: string) => {
 	const category = getCategory(categoryId);
 	return category?.collection === collection && Boolean(category.childSubcategories?.includes(subcategory));
+};
+
+export const getProductCollection = (
+	product: Pick<Product, 'category' | 'category_id'>,
+	categories: Category[],
+): Product['collection'] | undefined => {
+	const category = categories.find(
+		(item) => item.apiId !== undefined && item.apiId === product.category_id,
+	) ?? categories.find(
+		(item) => item.slug === product.category || item.id === product.category,
+	);
+
+	return category?.collection;
 };
