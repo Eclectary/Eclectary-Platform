@@ -36,8 +36,41 @@ describe('Rails product responses', () => {
   });
 
   it('loads and normalizes an individual API product', async () => {
-    getMock.mockResolvedValue({ data: { data: { id: 42, price: '9.99' } } });
-    await expect(getProductById('42')).resolves.toMatchObject({ id: 42, price: 9.99 });
+    getMock.mockResolvedValue({ data: { data: {
+      id: 42,
+      title: 'API bowl',
+      description: 'Hand-thrown ceramic bowl',
+      price: '19.99',
+      image: '/rails/active_storage/blobs/redirect/primary/bowl.png',
+      images: [
+        '/rails/active_storage/blobs/redirect/primary/bowl.png',
+        '/rails/active_storage/blobs/redirect/detail/bowl.png',
+      ],
+      creator: 'Maker #7',
+      seller_id: 7,
+      category: '12',
+      category_id: 12,
+      created_at: '2026-10-27T12:00:00.000Z',
+      updated_at: '2026-10-27T13:00:00.000Z',
+    } } });
+
+    await expect(getProductById('42')).resolves.toEqual({
+      id: 42,
+      title: 'API bowl',
+      description: 'Hand-thrown ceramic bowl',
+      price: 19.99,
+      image: 'http://localhost:3000/rails/active_storage/blobs/redirect/primary/bowl.png',
+      images: [
+        'http://localhost:3000/rails/active_storage/blobs/redirect/primary/bowl.png',
+        'http://localhost:3000/rails/active_storage/blobs/redirect/detail/bowl.png',
+      ],
+      creator: 'Maker #7',
+      seller_id: 7,
+      category: '12',
+      category_id: 12,
+      created_at: '2026-10-27T12:00:00.000Z',
+      updated_at: '2026-10-27T13:00:00.000Z',
+    });
     expect(getMock).toHaveBeenCalledWith('/products/42');
   });
 
