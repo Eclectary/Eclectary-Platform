@@ -13,14 +13,18 @@ import Categories from "./pages/Categories";
 import Category from "./pages/Category";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import Orders from "./pages/Orders";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import ProductCard from "./components/ProductCard";
 import SellerCard from "./components/SellerCard";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { products } from "./data/products";
 import { categories, isValidCategorySelection } from "./data/categories";
 import { getSellers } from "./services/sellerApi";
+import { useAuth } from "./context/AuthContext";
 import type { Product } from "./types";
 import "./App.css";
 
@@ -171,12 +175,13 @@ function EditProduct() {
 }
 
 function AccountIndex() {
-  const hasSession = Boolean(
-    window.localStorage.getItem("eclectary-auth")
-    || window.sessionStorage.getItem("eclectary-auth"),
-  );
+  const { user, token, loading } = useAuth();
 
-  return <Navigate to={hasSession ? "/account/profile" : "/account/login"} replace />;
+  if (loading) {
+    return null;
+  }
+
+  return <Navigate to={user && token ? "/account/profile" : "/account/login"} replace />;
 }
 
 function App() {
@@ -200,7 +205,11 @@ function App() {
           <Route path="/account" element={<AccountIndex />} />
           <Route path="/account/login" element={<Login />} />
           <Route path="/account/register" element={<Register />} />
-          <Route path="/account/profile" element={<Profile />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/account/profile" element={<Profile />} />
+            <Route path="/account/orders" element={<Orders />} />
+            <Route path="/checkout" element={<Checkout />} />
+          </Route>
 
           {/* Backward-compatible auth redirects */}
           <Route path="/login" element={<Navigate to="/account/login" replace />} />
@@ -209,23 +218,24 @@ function App() {
 
           {/* Shopping */}
           <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order" element={<Order />} />
+          <Route path="/order" element={<OrderConfirmation />} />
         </Route>
 
-        {/* Seller routes */}
-        <Route path="/seller" element={<SellerLayout />}>
-          <Route index element={<SellerHome />} />
-        </Route>
+        <Route element={<ProtectedRoute />}>
+          {/* Seller routes */}
+          <Route path="/seller" element={<SellerLayout />}>
+            <Route index element={<SellerHome />} />
+          </Route>
 
-        {/* Creator dashboard routes */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<DashboardOverview />} />
-          <Route path="products" element={<Products />} />
-          <Route path="products/new" element={<AddProduct />} />
-          <Route path="products/:id/edit" element={<EditProduct />} />
-          <Route path="orders" element={<div style={{ padding: 24 }}>Orders</div>} />
-          <Route path="settings" element={<div style={{ padding: 24 }}>Settings</div>} />
+          {/* Creator dashboard routes */}
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<DashboardOverview />} />
+            <Route path="products" element={<Products />} />
+            <Route path="products/new" element={<AddProduct />} />
+            <Route path="products/:id/edit" element={<EditProduct />} />
+            <Route path="orders" element={<div style={{ padding: 24 }}>Orders</div>} />
+            <Route path="settings" element={<div style={{ padding: 24 }}>Settings</div>} />
+          </Route>
         </Route>
 
         {/* Fallback */}
@@ -235,7 +245,4 @@ function App() {
   )
 }
 
-function Order() {
-  return <div style={{ padding: 24 }}><h2>Order</h2><p>Order confirmation placeholder.</p></div>
-}
 export default App

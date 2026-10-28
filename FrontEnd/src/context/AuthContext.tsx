@@ -1,9 +1,16 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
   getCurrentUser,
   login as loginApi,
   register as registerApi,
 } from "../services/authApi";
+import {
+  clearStoredToken,
+  getStoredToken,
+  storeToken,
+} from "../services/tokenStorage";
+import { AuthSessionValidationError } from "../services/authErrors";
+import { AUTH_SESSION_UNAUTHORIZED_EVENT } from "../services/authSession";
 
 
 interface User {
@@ -16,7 +23,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   register: (
     email: string,
     password: string,
@@ -29,14 +36,34 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem("token")
-  );
+  const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [loading, setLoading] = useState(true);
+
+  const clearAuthentication = useCallback(() => {
+    clearStoredToken();
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorizedSession = () => clearAuthentication();
+
+    window.addEventListener(
+      AUTH_SESSION_UNAUTHORIZED_EVENT,
+      handleUnauthorizedSession,
+    );
+
+    return () => {
+      window.removeEventListener(
+        AUTH_SESSION_UNAUTHORIZED_EVENT,
+        handleUnauthorizedSession,
+      );
+    };
+  }, [clearAuthentication]);
 
   useEffect(() => {
     const restoreSession = async () => {
-      const storedToken = localStorage.getItem("token");
+      const storedToken = getStoredToken();
 
       if (!storedToken) {
         setLoading(false);
@@ -47,25 +74,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
       } catch {
-        localStorage.removeItem("token");
-        setToken(null);
-        setUser(null);
+        clearAuthentication();
       } finally {
         setLoading(false);
       }
     };
 
     restoreSession();
-  }, []);
+  }, [clearAuthentication]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean) => {
     const data = await loginApi({ email, password });
 
-    localStorage.setItem("token", data.token);
+    storeToken(data.token, rememberMe);
     setToken(data.token);
 
-    const currentUser = await getCurrentUser();
-    setUser(currentUser);
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch (error) {
+      clearAuthentication();
+      throw new AuthSessionValidationError(error);
+    }
   };
 
   const register = async (
@@ -80,18 +110,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (data.token) {
-      localStorage.setItem("token", data.token);
+      storeToken(data.token, true);
       setToken(data.token);
 
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        clearAuthentication();
+        throw new AuthSessionValidationError(error);
+      }
     }
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    setToken(null);
-    setUser(null);
+    clearAuthentication();
+    localStorage.removeItem("eclectary-auth");
+    sessionStorage.removeItem("eclectary-auth");
   };
 
   return (

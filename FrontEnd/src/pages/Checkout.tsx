@@ -1,19 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import ProductImage from '../components/ProductImage';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { products } from '../data/products';
+import { createOrder } from '../services/orderApi';
 import '../styles/checkout.css';
 
 type CustomerInfo = {
-	fullName: string;
-	email: string;
-	phone: string;
-	address: string;
-	city: string;
-	postalCode: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
 };
 
 type CustomerErrors = Partial<Record<keyof CustomerInfo, string>>;
@@ -21,249 +23,231 @@ type CustomerErrors = Partial<Record<keyof CustomerInfo, string>>;
 const SHIPPING_ESTIMATE = 6.5;
 
 function Checkout() {
-	const navigate = useNavigate();
-	const { items, subtotal, clearCart } = useCart();
-	const [customer, setCustomer] = useState<CustomerInfo>({
-		fullName: '',
-		email: '',
-		phone: '',
-		address: '',
-		city: '',
-		postalCode: '',
-	});
-	const [errors, setErrors] = useState<CustomerErrors>({});
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { items, subtotal, clearCart } = useCart();
+  const [customer, setCustomer] = useState<CustomerInfo>({
+    fullName: '',
+    email: user?.email ?? '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+  });
+  const [errors, setErrors] = useState<CustomerErrors>({});
+  const [submissionError, setSubmissionError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-	const cartProducts = items
-		.map((item) => ({ item, product: products.find((product) => product.id === item.productId) }))
-		.filter((entry): entry is typeof entry & { product: NonNullable<typeof entry.product> } => Boolean(entry.product));
+  useEffect(() => {
+    if (user?.email) {
+      setCustomer((current) => current.email ? current : { ...current, email: user.email });
+    }
+  }, [user?.email]);
 
-	const shipping = cartProducts.length > 0 ? SHIPPING_ESTIMATE : 0;
-	const total = subtotal + shipping;
+  const availableItems = items.filter(
+    (item): item is typeof item & { product: NonNullable<typeof item.product> } =>
+      item.status === 'available' && Boolean(item.product),
+  );
+  const hasPendingItems = items.some((item) => item.status === 'pending');
+  const hasUnavailableItems = items.some((item) => item.status === 'unavailable');
+  const shipping = availableItems.length > 0 ? SHIPPING_ESTIMATE : 0;
+  const total = subtotal + shipping;
 
-	if (items.length === 0) {
-		return (
-			<section className="checkout-page checkout-page--empty">
-				<h1>Your checkout is empty.</h1>
-				<p>Add something from the shop before checking out.</p>
-				<Link to="/shop">Return to the shop</Link>
-			</section>
-		);
-	}
+  if (items.length === 0) {
+    return (
+      <section className="checkout-page checkout-page--empty">
+        <h1>Your checkout is empty.</h1>
+        <p>Add something from the shop before checking out.</p>
+        <Link to="/shop">Return to the shop</Link>
+      </section>
+    );
+  }
 
-	const handleFieldChange = (field: keyof CustomerInfo, value: string) => {
-		setCustomer((current) => ({ ...current, [field]: value }));
-	};
+  const handleFieldChange = (field: keyof CustomerInfo, value: string) => {
+    setCustomer((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  };
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-		const nextErrors: CustomerErrors = {};
+    if (submitting) return;
 
-		if (!customer.fullName.trim()) {
-			nextErrors.fullName = 'Enter your full name.';
-		}
+    const nextErrors: CustomerErrors = {};
+    const requiredFields: Array<keyof CustomerInfo> = [
+      'fullName', 'email', 'phone', 'address', 'city', 'state', 'postalCode',
+    ];
 
-		if (!customer.email.trim()) {
-			nextErrors.email = 'Enter your email address.';
-		} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email.trim())) {
-			nextErrors.email = 'Enter a valid email address.';
-		}
+    requiredFields.forEach((field) => {
+      if (!customer[field].trim()) nextErrors[field] = 'This field is required.';
+    });
 
-		if (!customer.phone.trim()) {
-			nextErrors.phone = 'Enter a phone number.';
-		}
+    if (customer.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email.trim())) {
+      nextErrors.email = 'Enter a valid email address.';
+    }
+    if (customer.state.trim() && !/^[A-Za-z]{2}$/.test(customer.state.trim())) {
+      nextErrors.state = 'Enter a two-letter state code.';
+    }
+    if (customer.postalCode.trim() && !/^\d{5}(?:-\d{4})?$/.test(customer.postalCode.trim())) {
+      nextErrors.postalCode = 'Enter a valid ZIP code.';
+    }
 
-		if (!customer.address.trim()) {
-			nextErrors.address = 'Enter a shipping address.';
-		}
+    setErrors(nextErrors);
+    setSubmissionError('');
 
-		if (!customer.city.trim()) {
-			nextErrors.city = 'Enter a city.';
-		}
+    if (Object.keys(nextErrors).length > 0) return;
+    if (authLoading || !user) {
+      setSubmissionError('Your session is not ready. Please sign in again before submitting.');
+      return;
+    }
+    if (hasPendingItems) {
+      setSubmissionError('Please wait while cart products are being checked.');
+      return;
+    }
+    if (hasUnavailableItems || availableItems.length !== items.length) {
+      setSubmissionError('Remove unavailable products from your cart before checking out.');
+      return;
+    }
 
-		if (!customer.postalCode.trim()) {
-			nextErrors.postalCode = 'Enter a postal code.';
-		}
+    setSubmitting(true);
+    try {
+      const order = await createOrder({
+        customer_name: customer.fullName.trim(),
+        customer_email: customer.email.trim(),
+        customer_phone: customer.phone.trim(),
+        shipping_address: customer.address.trim(),
+        shipping_city: customer.city.trim(),
+        shipping_state: customer.state.trim().toUpperCase(),
+        shipping_postal_code: customer.postalCode.trim(),
+        items: availableItems.map((item) => ({
+          product_id: item.productId,
+          quantity: item.quantity,
+        })),
+      });
 
-		setErrors(nextErrors);
+      clearCart();
+      navigate('/order', { state: { order } });
+    } catch {
+      setSubmissionError('We could not create your order. Your cart has been kept so you can try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-		if (Object.keys(nextErrors).length > 0) {
-			return;
-		}
+  return (
+    <section className="checkout-page">
+      <div className="checkout-page__header">
+        <p className="eyebrow">Almost yours</p>
+        <h1>Checkout</h1>
+      </div>
 
-		clearCart();
-		navigate('/');
-	};
+      <div className="checkout-page__layout">
+        <form className="checkout-form" onSubmit={handleSubmit} noValidate>
+          <section className="checkout-section" aria-labelledby="customer-info-heading">
+            <h2 id="customer-info-heading">Customer information</h2>
+            <div className="checkout-field">
+              <label htmlFor="fullName">Full name</label>
+              <input id="fullName" name="fullName" autoComplete="name" value={customer.fullName}
+                onChange={(event) => handleFieldChange('fullName', event.target.value)} aria-invalid={Boolean(errors.fullName)} />
+              {errors.fullName && <p className="checkout-error">{errors.fullName}</p>}
+            </div>
+            <div className="checkout-field-row">
+              <div className="checkout-field">
+                <label htmlFor="email">Email address</label>
+                <input id="email" name="email" type="email" autoComplete="email" value={customer.email}
+                  onChange={(event) => handleFieldChange('email', event.target.value)} aria-invalid={Boolean(errors.email)} />
+                {errors.email && <p className="checkout-error">{errors.email}</p>}
+              </div>
+              <div className="checkout-field">
+                <label htmlFor="phone">Phone number</label>
+                <input id="phone" name="phone" type="tel" autoComplete="tel" value={customer.phone}
+                  onChange={(event) => handleFieldChange('phone', event.target.value)} aria-invalid={Boolean(errors.phone)} />
+                {errors.phone && <p className="checkout-error">{errors.phone}</p>}
+              </div>
+            </div>
+            <div className="checkout-field">
+              <label htmlFor="address">Street address</label>
+              <input id="address" name="address" autoComplete="street-address" value={customer.address}
+                onChange={(event) => handleFieldChange('address', event.target.value)} aria-invalid={Boolean(errors.address)} />
+              {errors.address && <p className="checkout-error">{errors.address}</p>}
+            </div>
+            <div className="checkout-field-row checkout-field-row--shipping">
+              <div className="checkout-field">
+                <label htmlFor="city">City</label>
+                <input id="city" name="city" autoComplete="address-level2" value={customer.city}
+                  onChange={(event) => handleFieldChange('city', event.target.value)} aria-invalid={Boolean(errors.city)} />
+                {errors.city && <p className="checkout-error">{errors.city}</p>}
+              </div>
+              <div className="checkout-field">
+                <label htmlFor="state">State</label>
+                <input id="state" name="state" autoComplete="address-level1" maxLength={2} value={customer.state}
+                  onChange={(event) => handleFieldChange('state', event.target.value)} aria-invalid={Boolean(errors.state)} />
+                {errors.state && <p className="checkout-error">{errors.state}</p>}
+              </div>
+              <div className="checkout-field">
+                <label htmlFor="postalCode">ZIP code</label>
+                <input id="postalCode" name="postalCode" autoComplete="postal-code" value={customer.postalCode}
+                  onChange={(event) => handleFieldChange('postalCode', event.target.value)} aria-invalid={Boolean(errors.postalCode)} />
+                {errors.postalCode && <p className="checkout-error">{errors.postalCode}</p>}
+              </div>
+            </div>
+          </section>
 
-	return (
-		<section className="checkout-page">
-			<div className="checkout-page__header">
-				<p className="eyebrow">Almost yours</p>
-				<h1>Checkout</h1>
-			</div>
+          <section className="checkout-section checkout-section--placeholder" aria-labelledby="shipping-heading">
+            <h2 id="shipping-heading">Shipping</h2>
+            <p className="checkout-placeholder-note">A fixed standard shipping rate is applied by the server.</p>
+            <div className="checkout-placeholder-card"><span>Standard shipping</span><strong>${SHIPPING_ESTIMATE.toFixed(2)}</strong></div>
+          </section>
 
-			<div className="checkout-page__layout">
-				<form className="checkout-form" onSubmit={handleSubmit} noValidate>
-					<section className="checkout-section" aria-labelledby="customer-info-heading">
-						<h2 id="customer-info-heading">Customer information</h2>
-						<div className="checkout-field">
-							<label htmlFor="fullName">Full name</label>
-							<input
-								id="fullName"
-								name="fullName"
-								type="text"
-								autoComplete="name"
-								placeholder="Jane Doe"
-								value={customer.fullName}
-								onChange={(event) => handleFieldChange('fullName', event.target.value)}
-								aria-invalid={Boolean(errors.fullName)}
-								aria-describedby={errors.fullName ? 'fullName-error' : undefined}
-							/>
-							{errors.fullName ? <p className="checkout-error" id="fullName-error">{errors.fullName}</p> : null}
-						</div>
+          <section className="checkout-section checkout-section--placeholder" aria-labelledby="payment-heading">
+            <h2 id="payment-heading">Payment</h2>
+            <p className="checkout-placeholder-note">Payment processing is not connected. This creates a pending order and does not charge you.</p>
+          </section>
 
-						<div className="checkout-field-row">
-							<div className="checkout-field">
-								<label htmlFor="email">Email address</label>
-								<input
-									id="email"
-									name="email"
-									type="email"
-									autoComplete="email"
-									placeholder="you@example.com"
-									value={customer.email}
-									onChange={(event) => handleFieldChange('email', event.target.value)}
-									aria-invalid={Boolean(errors.email)}
-									aria-describedby={errors.email ? 'email-error' : undefined}
-								/>
-								{errors.email ? <p className="checkout-error" id="email-error">{errors.email}</p> : null}
-							</div>
+          {hasPendingItems && <p className="checkout-notice" role="status">Checking current product details before checkout…</p>}
+          {hasUnavailableItems && <p className="checkout-notice checkout-notice--error">Remove unavailable products in your cart before checking out.</p>}
+          {submissionError && <p className="checkout-notice checkout-notice--error" role="alert">{submissionError}</p>}
 
-							<div className="checkout-field">
-								<label htmlFor="phone">Phone number</label>
-								<input
-									id="phone"
-									name="phone"
-									type="tel"
-									autoComplete="tel"
-									placeholder="(555) 123-4567"
-									value={customer.phone}
-									onChange={(event) => handleFieldChange('phone', event.target.value)}
-									aria-invalid={Boolean(errors.phone)}
-									aria-describedby={errors.phone ? 'phone-error' : undefined}
-								/>
-								{errors.phone ? <p className="checkout-error" id="phone-error">{errors.phone}</p> : null}
-							</div>
-						</div>
+          <button className="checkout-submit" type="submit"
+            disabled={submitting || authLoading || !user || hasPendingItems || hasUnavailableItems || availableItems.length === 0}>
+            {submitting ? 'Creating order…' : 'Create pending order'}
+          </button>
+          <p className="checkout-back-link"><Link to="/cart">Back to cart</Link></p>
+        </form>
 
-						<div className="checkout-field">
-							<label htmlFor="address">Street address</label>
-							<input
-								id="address"
-								name="address"
-								type="text"
-								autoComplete="street-address"
-								placeholder="123 Maker Lane"
-								value={customer.address}
-								onChange={(event) => handleFieldChange('address', event.target.value)}
-								aria-invalid={Boolean(errors.address)}
-								aria-describedby={errors.address ? 'address-error' : undefined}
-							/>
-							{errors.address ? <p className="checkout-error" id="address-error">{errors.address}</p> : null}
-						</div>
-
-						<div className="checkout-field-row">
-							<div className="checkout-field">
-								<label htmlFor="city">City</label>
-								<input
-									id="city"
-									name="city"
-									type="text"
-									autoComplete="address-level2"
-									placeholder="Portland"
-									value={customer.city}
-									onChange={(event) => handleFieldChange('city', event.target.value)}
-									aria-invalid={Boolean(errors.city)}
-									aria-describedby={errors.city ? 'city-error' : undefined}
-								/>
-								{errors.city ? <p className="checkout-error" id="city-error">{errors.city}</p> : null}
-							</div>
-
-							<div className="checkout-field">
-								<label htmlFor="postalCode">Postal code</label>
-								<input
-									id="postalCode"
-									name="postalCode"
-									type="text"
-									autoComplete="postal-code"
-									placeholder="97201"
-									value={customer.postalCode}
-									onChange={(event) => handleFieldChange('postalCode', event.target.value)}
-									aria-invalid={Boolean(errors.postalCode)}
-									aria-describedby={errors.postalCode ? 'postalCode-error' : undefined}
-								/>
-								{errors.postalCode ? <p className="checkout-error" id="postalCode-error">{errors.postalCode}</p> : null}
-							</div>
-						</div>
-					</section>
-
-					<section className="checkout-section checkout-section--placeholder" aria-labelledby="shipping-heading">
-						<h2 id="shipping-heading">Shipping</h2>
-						<p className="checkout-placeholder-note">Shipping method selection is coming soon. A standard rate is applied for now.</p>
-						<div className="checkout-placeholder-card">
-							<span>Standard shipping</span>
-							<strong>${SHIPPING_ESTIMATE.toFixed(2)}</strong>
-						</div>
-					</section>
-
-					<section className="checkout-section checkout-section--placeholder" aria-labelledby="payment-heading">
-						<h2 id="payment-heading">Payment</h2>
-						<p className="checkout-placeholder-note">Payment processing is coming soon. No charge will be made for this mock order.</p>
-						<div className="checkout-placeholder-card">
-							<span>Card ending in ****</span>
-							<strong>Not connected</strong>
-						</div>
-					</section>
-
-					<button className="checkout-submit" type="submit">Place mock order</button>
-					<p className="checkout-back-link"><Link to="/cart">Back to cart</Link></p>
-				</form>
-
-				<aside className="checkout-summary" aria-label="Order summary">
-					<h2>Order summary</h2>
-					<div className="checkout-summary__list">
-						{cartProducts.map(({ item, product }) => (
-							<div className="checkout-summary__item" key={product.id}>
-								<ProductImage
-									image={product.image}
-									alt={product.title}
-									className="checkout-summary__image"
-									fallbackClassName="checkout-summary__image-placeholder"
-								/>
-								<div className="checkout-summary__item-details">
-									<span>{product.title}</span>
-									<span className="checkout-summary__item-quantity">Qty {item.quantity}</span>
-								</div>
-								<strong>${(product.price * item.quantity).toFixed(2)}</strong>
-							</div>
-						))}
-					</div>
-					<div className="checkout-summary__row">
-						<span>Subtotal</span>
-						<span>${subtotal.toFixed(2)}</span>
-					</div>
-					<div className="checkout-summary__row">
-						<span>Shipping</span>
-						<span>${shipping.toFixed(2)}</span>
-					</div>
-					<div className="checkout-summary__row checkout-summary__row--total">
-						<span>Total</span>
-						<strong>${total.toFixed(2)}</strong>
-					</div>
-				</aside>
-			</div>
-		</section>
-	);
+        <aside className="checkout-summary" aria-label="Order summary">
+          <h2>Order summary</h2>
+          <div className="checkout-summary__list">
+            {items.map((item) => (
+              <div className={`checkout-summary__item checkout-summary__item--${item.status}`} key={item.productId}>
+                {item.product ? (
+                  <>
+                    <ProductImage image={item.product.image} alt={item.product.title} className="checkout-summary__image"
+                      fallbackClassName="checkout-summary__image-placeholder" />
+                    <div className="checkout-summary__item-details">
+                      <span>{item.product.title}</span>
+                      <span className="checkout-summary__item-quantity">Qty {item.quantity}</span>
+                      {item.status !== 'available' && <span>{item.status === 'pending' ? 'Checking product…' : 'Unavailable'}</span>}
+                    </div>
+                    <strong>{item.status === 'available' ? `$${(item.product.price * item.quantity).toFixed(2)}` : '—'}</strong>
+                  </>
+                ) : (
+                  <div className="checkout-summary__item-details checkout-summary__item-details--wide">
+                    <span>Product #{item.productId}</span>
+                    <span>{item.status === 'pending' ? 'Checking product…' : 'Unavailable'}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="checkout-summary__row"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+          <div className="checkout-summary__row"><span>Shipping</span><span>${shipping.toFixed(2)}</span></div>
+          <div className="checkout-summary__row checkout-summary__row--total"><span>Total</span><strong>${total.toFixed(2)}</strong></div>
+        </aside>
+      </div>
+    </section>
+  );
 }
 
 export default Checkout;

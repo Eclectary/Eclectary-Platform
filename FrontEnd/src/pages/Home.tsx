@@ -9,6 +9,7 @@ import logo from '../assets/images/eclectary logo nb.png';
 import SellerCard from '../components/SellerCard';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import CategoryCard from '../components/CategoryCard';
 import { getCategories } from '../services/categoryApi';
@@ -18,26 +19,14 @@ import { getPublicSellers } from '../services/sellerApi';
 import '../styles/home.css';
 import type { Category, Product, Seller } from '../types';
 
-const AUTH_STORAGE_KEY = 'eclectary-auth';
-const AUTH_EVENT_NAME = 'eclectary-auth-change';
 const FEEDBACK_URL = import.meta.env.VITE_FEEDBACK_URL || 'http://localhost:3000';
-
-function hasAuthSession() {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  return Boolean(
-    window.localStorage.getItem(AUTH_STORAGE_KEY)
-    || window.sessionStorage.getItem(AUTH_STORAGE_KEY),
-  );
-}
 
 function Home() {
   const { items: cartItems, totalItems } = useCart();
+  const { user, token, loading } = useAuth();
   const { ids: wishlistIds } = useWishlist();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(() => hasAuthSession());
+  const isLoggedIn = !loading && Boolean(user && token);
   const [marketplaceProducts, setMarketplaceProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -132,17 +121,6 @@ function Home() {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    const syncAuthState = () => setIsLoggedIn(hasAuthSession());
-
-    window.addEventListener('storage', syncAuthState);
-    window.addEventListener(AUTH_EVENT_NAME, syncAuthState);
-
-    return () => {
-      window.removeEventListener('storage', syncAuthState);
-      window.removeEventListener(AUTH_EVENT_NAME, syncAuthState);
-    };
-  }, []);
   const filteredSellers = useMemo(
     () => normalizedSearch
       ? sellers.filter((seller) => [seller.name, seller.specialty, seller.bio].join(' ').toLowerCase().includes(normalizedSearch))

@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 
 import Button from "../components/Button";
 import heroImage from "../assets/images/herobanner2.png";
+import { normalizeRegistrationError } from "../services/authErrors";
 import "../styles/login.css";
 
 type RegisterErrors = {
@@ -13,6 +14,7 @@ type RegisterErrors = {
   password?: string;
   confirmPassword?: string;
   agreeToTerms?: string;
+  form?: string;
 };
 
 function Register() {
@@ -67,13 +69,10 @@ function Register() {
 
   try {
     await register(normalizedEmail, password, confirmPassword);
-
-    window.dispatchEvent(new Event("eclectary-auth-change"));
     navigate("/");
-  } catch {
-    setErrors({
-      email: "Unable to create your account. Please try again.",
-    });
+  } catch (error) {
+    const authError = normalizeRegistrationError(error);
+    setErrors({ [authError.field]: authError.message });
   }
 }
 
@@ -188,6 +187,8 @@ function Register() {
               <span>I agree to the terms and privacy policy</span>
             </label>
             {errors.agreeToTerms ? <p className="login-error" id="agreeToTerms-error">{errors.agreeToTerms}</p> : null}
+
+            {errors.form ? <p className="login-error" role="alert">{errors.form}</p> : null}
 
             <Button type="submit" size="lg" fullWidth>
               Create account <span aria-hidden="true">→</span>

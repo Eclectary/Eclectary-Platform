@@ -7,6 +7,7 @@ import Searchbar from '../components/Searchbar';
 import SellerCard from '../components/SellerCard';
 import logo from '../assets/images/eclectary logo nb.png';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { intentions } from '../data/intentions';
 import { getProducts } from '../services/productApi';
 import { getCategories } from '../services/categoryApi';
@@ -43,9 +44,6 @@ const collectionDescriptions: Record<string, string> = {
   'custom-printing': 'Artist-designed and personalized physical goods.',
 };
 
-const AUTH_STORAGE_KEY = 'eclectary-auth';
-const AUTH_EVENT_NAME = 'eclectary-auth-change';
-
 // Matches the single-column breakpoint in shop.css.
 const DESKTOP_MEDIA_QUERY = '(min-width: 901px)';
 
@@ -66,24 +64,14 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-function hasAuthSession() {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  return Boolean(
-    window.localStorage.getItem(AUTH_STORAGE_KEY)
-    || window.sessionStorage.getItem(AUTH_STORAGE_KEY),
-  );
-}
-
 function Shop() {
   const { totalItems } = useCart();
+  const { user, token, loading } = useAuth();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearchTerm = searchParams.get('search') ?? '';
   const [searchTerm, setSearchTerm] = useState(urlSearchTerm);
-  const [isLoggedIn, setIsLoggedIn] = useState(() => hasAuthSession());
+  const isLoggedIn = !loading && Boolean(user && token);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -237,18 +225,6 @@ function Shop() {
       document.getElementById('makers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [location.hash, sellersLoading]);
-
-  useEffect(() => {
-    const syncAuthState = () => setIsLoggedIn(hasAuthSession());
-
-    window.addEventListener('storage', syncAuthState);
-    window.addEventListener(AUTH_EVENT_NAME, syncAuthState);
-
-    return () => {
-      window.removeEventListener('storage', syncAuthState);
-      window.removeEventListener(AUTH_EVENT_NAME, syncAuthState);
-    };
-  }, []);
 
   useEffect(() => {
     if (!isFiltersOpen || isDesktop) {

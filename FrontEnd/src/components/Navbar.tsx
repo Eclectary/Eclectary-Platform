@@ -1,41 +1,15 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import "../styles/navbar.css";
 import logo from "../assets/images/eclectary logo nb.png";
 
-const AUTH_STORAGE_KEY = "eclectary-auth";
-const AUTH_EVENT_NAME = "eclectary-auth-change";
 const FEEDBACK_URL = import.meta.env.VITE_FEEDBACK_URL || "http://localhost:3000";
-
-function hasAuthSession() {
-    if (typeof window === "undefined") {
-        return false;
-    }
-
-    return Boolean(
-        window.localStorage.getItem(AUTH_STORAGE_KEY)
-        || window.sessionStorage.getItem(AUTH_STORAGE_KEY),
-    );
-}
 
 function Navbar() {
     const { totalItems } = useCart();
-    const [isLoggedIn, setIsLoggedIn] = useState(() => hasAuthSession());
-
-    useEffect(() => {
-        const syncAuthState = () => {
-            setIsLoggedIn(hasAuthSession());
-        };
-
-        window.addEventListener("storage", syncAuthState);
-        window.addEventListener(AUTH_EVENT_NAME, syncAuthState);
-
-        return () => {
-            window.removeEventListener("storage", syncAuthState);
-            window.removeEventListener(AUTH_EVENT_NAME, syncAuthState);
-        };
-    }, []);
+    const { user, token, loading } = useAuth();
+    const isLoggedIn = !loading && Boolean(user && token);
 
     return (
         <nav className="top-nav" aria-label="Main navigation">

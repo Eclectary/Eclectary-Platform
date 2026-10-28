@@ -5,15 +5,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { isAxiosError } from 'axios';
 
 import type { Product } from '../types/product';
-import { products } from '../data/products';
+import { getProductById } from '../services/productApi';
+
+type CartItemStatus = 'available' | 'pending' | 'unavailable';
 
 type CartItem = {
   productId: number;
   quantity: number;
+  product: Product | null;
+  status: CartItemStatus;
 };
 
 type CartContextValue = {
@@ -37,6 +43,39 @@ function normalizeQuantity(quantity: number): number {
   return Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1;
 }
 
+function readProductSnapshot(value: unknown, productId: number): Product | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const product = value as Partial<Product>;
+  const hasValidImage = product.image === undefined
+    || product.image === null
+    || typeof product.image === 'string';
+  const hasValidImages = product.images === undefined
+    || (Array.isArray(product.images) && product.images.every((image) => typeof image === 'string'));
+
+  if (
+    product.id !== productId
+    || typeof product.title !== 'string'
+    || !product.title.trim()
+    || typeof product.price !== 'number'
+    || !Number.isFinite(product.price)
+    || product.price < 0
+    || typeof product.creator !== 'string'
+    || !hasValidImage
+    || !hasValidImages
+  ) {
+    return null;
+  }
+
+  return product as Product;
+}
+
+function isNotFound(error: unknown): boolean {
+  return isAxiosError(error) && error.response?.status === 404;
+}
+
 function readStoredCart(): CartItem[] {
   if (typeof window === 'undefined') {
     return [];
@@ -50,23 +89,33 @@ function readStoredCart(): CartItem[] {
       return [];
     }
 
-    return parsedCart.reduce<CartItem[]>((cartItems, item) => {
+    const itemsByProductId = parsedCart.reduce<Map<number, CartItem>>((cartItems, item) => {
       if (
-        typeof item?.productId !== 'number'
+        !Number.isInteger(item?.productId)
+        || item.productId <= 0
         || typeof item?.quantity !== 'number'
         || item.quantity <= 0
       ) {
         return cartItems;
       }
 
-      return [
-        ...cartItems,
-        {
-          productId: item.productId,
-          quantity: normalizeQuantity(item.quantity),
-        },
-      ];
-    }, []);
+      const product = readProductSnapshot(item.product, item.productId);
+      const existingItem = cartItems.get(item.productId);
+      const status: CartItemStatus = product
+        ? item.status === 'unavailable' ? 'unavailable' : 'available'
+        : 'pending';
+
+      cartItems.set(item.productId, {
+        productId: item.productId,
+        quantity: normalizeQuantity((existingItem?.quantity ?? 0) + item.quantity),
+        product: product ?? existingItem?.product ?? null,
+        status: product ? status : existingItem?.status ?? status,
+      });
+
+      return cartItems;
+    }, new Map<number, CartItem>());
+
+    return [...itemsByProductId.values()];
   } catch {
     return [];
   }
@@ -74,10 +123,41 @@ function readStoredCart(): CartItem[] {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => readStoredCart());
+  const initialProductIds = useRef(items.map((item) => item.productId));
 
   useEffect(() => {
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    let active = true;
+
+    initialProductIds.current.forEach((productId) => {
+      void getProductById(String(productId))
+        .then((product) => {
+          if (!active) return;
+
+          setItems((currentItems) => currentItems.map((item) => (
+            item.productId === productId
+              ? { ...item, product, status: 'available' }
+              : item
+          )));
+        })
+        .catch((error: unknown) => {
+          if (!active || !isNotFound(error)) return;
+
+          setItems((currentItems) => currentItems.map((item) => (
+            item.productId === productId
+              ? { ...item, status: 'unavailable' }
+              : item
+          )));
+        });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const addItem = useCallback((product: Product, quantity = 1) => {
     const normalizedQuantity = normalizeQuantity(quantity);
@@ -88,12 +168,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existingItem) {
         return currentItems.map((item) =>
           item.productId === product.id
-            ? { ...item, quantity: item.quantity + normalizedQuantity }
+            ? {
+                ...item,
+                quantity: item.quantity + normalizedQuantity,
+                product,
+                status: 'available',
+              }
             : item,
         );
       }
 
-      return [...currentItems, { productId: product.id, quantity: normalizedQuantity }];
+      return [
+        ...currentItems,
+        {
+          productId: product.id,
+          quantity: normalizedQuantity,
+          product,
+          status: 'available',
+        },
+      ];
     });
   }, []);
 
@@ -116,9 +209,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = useCallback(() => setItems([]), []);
 
   const calculateSubtotal = useCallback(() => items.reduce((total, item) => {
-    const product = products.find((entry) => entry.id === item.productId);
-
-    return total + (product ? product.price * item.quantity : 0);
+    return total + (
+      item.status === 'available' && item.product
+        ? item.product.price * item.quantity
+        : 0
+    );
   }, 0), [items]);
 
   const value = useMemo<CartContextValue>(() => {

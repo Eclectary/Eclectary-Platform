@@ -1,81 +1,80 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 import Button from "../components/Button";
+import { useAuth } from "../context/AuthContext";
+import { getOrders } from "../services/orderApi";
+import type { Order } from "../types/order";
 import "../styles/profile.css";
 
-type StoredUser = {
-  email?: string;
-  fullName?: string;
-};
-
-const AUTH_STORAGE_KEY = "eclectary-auth";
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+}
 
 function Profile() {
   const navigate = useNavigate();
-  const [user] = useState<StoredUser>(() => {
-    const stored =
-      window.localStorage.getItem(AUTH_STORAGE_KEY) ?? window.sessionStorage.getItem(AUTH_STORAGE_KEY);
+  const { user, logout } = useAuth();
+  const displayName = "Eclectary Member";
 
-    if (!stored) {
-      return {
-        email: "",
-        fullName: "Eclectary Member",
-      };
-    }
-
-    try {
-      const parsed = JSON.parse(stored) as StoredUser;
-      return {
-        email: parsed.email ?? "",
-        fullName: parsed.fullName ?? "Eclectary Member",
-      };
-    } catch {
-      return {
-        email: "",
-        fullName: "Eclectary Member",
-      };
-    }
-  });
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   useEffect(() => {
-    const stored =
-      window.localStorage.getItem(AUTH_STORAGE_KEY) ?? window.sessionStorage.getItem(AUTH_STORAGE_KEY);
+    let isMounted = true;
+    const fetchRecent = async () => {
+      try {
+        const data = await getOrders();
+        if (!isMounted) return;
+        const sorted = [...data].sort((a, b) => {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          return dateB - dateA;
+        });
+        setRecentOrders(sorted.slice(0, 3));
+      } catch (err) {
+        if (!isMounted) return;
+        setRecentOrders([]);
+      } finally {
+        if (!isMounted) return;
+        setOrdersLoading(false);
+      }
+    };
 
-    if (!stored) {
-      navigate("/account/login");
-    }
-  }, [navigate]);
+    fetchRecent();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const initials = useMemo(() => {
-    const fullName = user.fullName?.trim() || "Eclectary Member";
-    const parts = fullName.split(/\s+/).filter(Boolean);
+    const parts = displayName.split(/\s+/).filter(Boolean);
 
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
 
-    return fullName.slice(0, 2).toUpperCase();
-  }, [user.fullName]);
+    return displayName.slice(0, 2).toUpperCase();
+  }, [displayName]);
 
   function handleLogout() {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    window.dispatchEvent(new Event("eclectary-auth-change"));
+    logout();
     navigate("/");
   }
 
   const profileDetails = [
-    { label: "Email", value: user.email || "Not provided" },
+    { label: "Email", value: user?.email || "Not provided" },
     { label: "Member since", value: "June 2026" },
     { label: "Saved lists", value: "12 items" },
     { label: "Delivery address", value: "No default address set" },
-  ];
-
-  const recentOrders = [
-    { id: "#1042", item: "Hand-thrown ceramic vase", status: "Shipped" },
-    { id: "#1038", item: "Woven market tote", status: "Delivered" },
-    { id: "#1019", item: "Botanical print set", status: "Processing" },
   ];
 
   return (
@@ -85,8 +84,8 @@ function Profile() {
           <div className="profile-avatar" aria-label="User avatar">{initials}</div>
           <div className="profile-summary">
             <p className="profile-kicker">Account</p>
-            <h1>{user.fullName || "Eclectary Member"}</h1>
-            <p>{user.email || "No email on file"}</p>
+            <h1>{displayName}</h1>
+            <p>{user?.email || "No email on file"}</p>
           </div>
 
           <div className="profile-actions">
@@ -127,7 +126,7 @@ function Profile() {
                 <span>Saved items</span>
               </div>
               <div className="profile-stat">
-                <strong>4</strong>
+                <strong>{recentOrders.length}</strong>
                 <span>Orders</span>
               </div>
               <div className="profile-stat">
@@ -140,19 +139,34 @@ function Profile() {
           <section className="profile-card">
             <div className="profile-card-header">
               <h2>Recent orders</h2>
-              <a href="/shop">View all</a>
+              <Link to="/account/orders">View all</Link>
             </div>
 
             <div className="profile-order-list">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="profile-order-item">
-                  <div>
-                    <span className="profile-order-id">{order.id}</span>
-                    <p>{order.item}</p>
-                  </div>
-                  <span className="profile-order-status">{order.status}</span>
-                </div>
-              ))}
+              {ordersLoading ? (
+                <p>Loading orders...</p>
+              ) : recentOrders.length === 0 ? (
+                <p>
+                  No orders yet. <Link to="/shop">Start shopping</Link>
+                </p>
+              ) : (
+                recentOrders.map((order) => {
+                  const firstItem = order.items[0];
+                  const itemSummary = firstItem
+                    ? `${firstItem.title}${order.items.length > 1 ? ` + ${order.items.length - 1} more` : ""}`
+                    : "Order items";
+                  return (
+                    <div key={order.id} className="profile-order-item">
+                      <div>
+                        <span className="profile-order-id">#{order.id}</span>
+                        <p>{itemSummary}</p>
+                        <p style={{ fontSize: "0.875rem", color: "#666" }}>{formatDate(order.created_at)}</p>
+                      </div>
+                      <span className="profile-order-status">{order.status}</span>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
         </div>

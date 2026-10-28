@@ -53,6 +53,10 @@
   gap: var(--space-4);
 }
 
+.checkout-field-row--shipping {
+  grid-template-columns: minmax(0, 1fr) 90px minmax(120px, 0.75fr);
+}
+
 .checkout-field {
   display: grid;
   gap: var(--space-2);
@@ -133,6 +137,25 @@
   transform: translateY(-1px);
 }
 
+.checkout-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.checkout-notice {
+  padding: var(--space-4);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--beige-100);
+  color: var(--neutral-800);
+}
+
+.checkout-notice--error {
+  border-color: #a34747;
+  color: #7c3030;
+}
+
 .checkout-back-link a {
   color: var(--color-primary);
   font: var(--text-nav);
@@ -195,6 +218,14 @@
   min-width: 0;
 }
 
+.checkout-summary__item-details--wide {
+  grid-column: 1 / -1;
+}
+
+.checkout-summary__item--unavailable {
+  opacity: 0.7;
+}
+
 .checkout-summary__item-details span:first-child {
   overflow: hidden;
   color: var(--neutral-900);
@@ -218,6 +249,58 @@
 .checkout-summary__row--total {
   color: var(--color-primary);
   font-size: 1.1rem;
+}
+
+.checkout-card {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--border-aura);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.checkout-eyebrow {
+  color: var(--color-primary);
+  font: var(--text-nav);
+  text-transform: uppercase;
+}
+
+.checkout-empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+}
+
+.checkout-button {
+  display: inline-flex;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--gradient-primary);
+  color: var(--neutral-0);
+  font: var(--text-button);
+}
+
+.order-confirmation .checkout-summary {
+  position: static;
+  margin-bottom: var(--space-5);
+}
+
+.order-confirmation .checkout-summary__item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.checkout-summary__total {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-soft);
+  color: var(--color-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {

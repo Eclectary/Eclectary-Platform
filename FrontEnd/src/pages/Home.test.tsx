@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import { CartProvider } from '../context/CartContext';
+import { AuthProvider } from '../context/AuthContext';
 import { WishlistProvider } from '../context/WishlistContext';
 import { getCategories } from '../services/categoryApi';
 import { getProducts } from '../services/productApi';
@@ -46,11 +47,13 @@ function deferredProducts() {
 function renderHome() {
   return render(
     <MemoryRouter>
-      <CartProvider>
-        <WishlistProvider>
-          <Home />
-        </WishlistProvider>
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <Home />
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
     </MemoryRouter>,
   );
 }

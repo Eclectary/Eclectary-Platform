@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 
 import { CartProvider } from '../context/CartContext';
+import { AuthProvider } from '../context/AuthContext';
 import { WishlistProvider } from '../context/WishlistContext';
 import { getCategories } from '../services/categoryApi';
 import { getProducts } from '../services/productApi';
@@ -58,12 +59,14 @@ function RouterTestControls() {
 function renderShop(path = '/shop') {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <CartProvider>
-        <WishlistProvider>
-          <Shop />
-          <RouterTestControls />
-        </WishlistProvider>
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <Shop />
+            <RouterTestControls />
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
     </MemoryRouter>,
   );
 }

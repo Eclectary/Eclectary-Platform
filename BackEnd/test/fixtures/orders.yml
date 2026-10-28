@@ -1,7 +1,23 @@
 one:
   user: one
   status: pending
+  customer_name: Customer One
+  customer_email: customer@example.com
+  customer_phone: 555-555-0101
+  shipping_address: 123 Main St
+  shipping_city: Winston-Salem
+  shipping_state: NC
+  shipping_postal_code: 27101
+  shipping_amount: 6.50
 
 two:
   user: two
   status: paid
+  customer_name: Seller Two
+  customer_email: seller@example.com
+  customer_phone: 555-555-0102
+  shipping_address: 456 Market St
+  shipping_city: Raleigh
+  shipping_state: NC
+  shipping_postal_code: 27601
+  shipping_amount: 6.50

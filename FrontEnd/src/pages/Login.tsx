@@ -5,12 +5,14 @@ import { Link, useNavigate } from "react-router-dom";
 
 import Button from "../components/Button";
 import heroImage from "../assets/images/herobanner2.png";
+import { normalizeLoginError } from "../services/authErrors";
 import "../styles/login.css";
 
 
 type LoginErrors = {
   email?: string;
   password?: string;
+  form?: string;
 };
 
 function Login() {
@@ -45,20 +47,11 @@ function Login() {
   }
 
   try {
-    await login(normalizedEmail, password);
-
-    if (rememberMe) {
-      localStorage.setItem("eclectary-auth", "true");
-    } else {
-      sessionStorage.setItem("eclectary-auth", "true");
-    }
-
-    window.dispatchEvent(new Event("eclectary-auth-change"));
+    await login(normalizedEmail, password, rememberMe);
     navigate("/");
-  } catch {
-    setErrors({
-      email: "Invalid email or password.",
-    });
+  } catch (error) {
+    const authError = normalizeLoginError(error);
+    setErrors({ [authError.field]: authError.message });
   }
 }
 
@@ -131,6 +124,8 @@ function Login() {
                 Forgot password?
               </button>
             </div>
+
+            {errors.form ? <p className="login-error" role="alert">{errors.form}</p> : null}
 
             <Button type="submit" size="lg" fullWidth>
               Sign in <span aria-hidden="true">→</span>

@@ -1,9 +1,10 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AxiosError, AxiosHeaders } from 'axios';
 import userEvent from '@testing-library/user-event';
 import ProductDetail from '../pages/ProductDetail';
+import Cart from '../pages/Cart';
 import { CartProvider } from '../context/CartContext';
 import { WishlistProvider } from '../context/WishlistContext';
 import { getProductById, getProducts } from '../services/productApi';
@@ -49,6 +50,23 @@ const productFixtures: Product[] = [
       image: 'https://example.com/journal.jpg',
     },
   ];
+
+const apiOnlyProduct: Product = {
+  id: 987654,
+  title: 'Live API bowl',
+  description: 'Wheel-thrown stoneware bowl',
+  price: 19.99,
+  creator: 'Public Clay Studio',
+  seller_id: 42,
+  category: '7',
+  category_id: 7,
+  category_name: 'Ceramics',
+  image: 'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+  images: [
+    'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
+    'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl-detail.png',
+  ],
+};
 
 vi.mock('../services/productApi', () => ({
   getProductById: vi.fn(),
@@ -98,24 +116,25 @@ const renderProductDetailWithId = (productId: string | number = 1) => {
   );
 };
 
+const renderProductDetailWithCart = (productId: string | number) => render(
+  <MemoryRouter initialEntries={[`/product/${productId}`]}>
+    <CartProvider>
+      <WishlistProvider>
+        <Routes>
+          <Route
+            path="/product/:id"
+            element={<><ProductDetail /><Link to="/cart">View cart</Link></>}
+          />
+          <Route path="/cart" element={<Cart />} />
+        </Routes>
+      </WishlistProvider>
+    </CartProvider>
+  </MemoryRouter>,
+);
+
 describe('ProductDetail', () => {
   it('loads an API product outside the mock catalog and links its real seller by ID', async () => {
-    vi.mocked(getProductById).mockResolvedValue({
-      id: 987654,
-      title: 'Live API bowl',
-      description: 'Wheel-thrown stoneware bowl',
-      price: 19.99,
-      creator: 'Old maker name',
-      seller_id: 42,
-      category: '7',
-      category_id: 7,
-      category_name: 'Ceramics',
-      image: 'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
-      images: [
-        'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl.png',
-        'http://localhost:3000/rails/active_storage/blobs/redirect/signed-id/bowl-detail.png',
-      ],
-    });
+    vi.mocked(getProductById).mockResolvedValue(apiOnlyProduct);
     vi.mocked(getProducts).mockResolvedValue([]);
     vi.mocked(getPublicSellerById).mockResolvedValue({
       id: 42, name: 'Public Clay Studio', image: '/favicon.svg', specialty: '', bio: '',
@@ -136,6 +155,25 @@ describe('ProductDetail', () => {
     );
     expect(screen.queryByText('Moonlit Clay Mug')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Related products')).not.toBeInTheDocument();
+  });
+
+  it('adds an API-only product and displays its real snapshot in Cart', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getProductById).mockResolvedValue(apiOnlyProduct);
+    vi.mocked(getProducts).mockResolvedValue([]);
+    vi.mocked(getPublicSellerById).mockResolvedValue({
+      id: 42, name: 'Public Clay Studio', image: '/favicon.svg', specialty: '', bio: '',
+    });
+    renderProductDetailWithCart(apiOnlyProduct.id);
+
+    await user.click(await screen.findByRole('button', { name: 'Add to cart' }));
+    await user.click(screen.getByRole('link', { name: 'View cart' }));
+
+    expect(screen.getByRole('heading', { name: apiOnlyProduct.title })).toBeInTheDocument();
+    expect(screen.getByText(`By ${apiOnlyProduct.creator}`)).toBeInTheDocument();
+    expect(screen.getByText('$19.99 each')).toBeInTheDocument();
+    expect(screen.getByAltText(apiOnlyProduct.title)).toHaveAttribute('src', apiOnlyProduct.image);
+    expect(screen.getByLabelText('Cart summary')).toHaveTextContent('$19.99');
   });
 
   it('does not substitute a mock product when the API fails for a matching ID', async () => {
