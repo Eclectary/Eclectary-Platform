@@ -25,6 +25,7 @@ const categories: Category[] = [
 const products: Product[] = [
   {
     id: 1,
+    active: true,
     title: 'First Product',
     description: 'Wheel-thrown stoneware for daily rituals',
     price: 30,
@@ -36,8 +37,8 @@ const products: Product[] = [
     collection: 'custom-printing',
     rating: 4,
   },
-  { id: 2, title: 'Second Product', price: 10, creator: 'Maker Two', category: 'art', category_id: 77, collection: 'custom-printing', rating: 5 },
-  { id: 3, title: 'Other Product', price: 20, creator: 'Maker Two', category: 'other', category_id: 88, rating: 3 },
+  { id: 2, active: true, title: 'Second Product', price: 10, creator: 'Maker Two', category: 'art', category_id: 77, collection: 'custom-printing', rating: 5 },
+  { id: 3, active: true, title: 'Other Product', price: 20, creator: 'Maker Two', category: 'other', category_id: 88, rating: 3 },
 ];
 const sellers: Seller[] = [
   { id: 42, name: 'Maker One', image: '/maker.jpg', specialty: 'Prints', bio: 'Studio one' },
@@ -270,9 +271,9 @@ describe('Department browsing with Rails-shaped API responses', () => {
   // Rails-shaped products: the serializer never sends `collection`, only `category_id`
   // (numeric) and `category` (that id as a string).
   const departmentProducts: Product[] = [
-    { id: 1, title: 'Handmade Mug', price: 30, creator: 'Maker One', category: '77', category_id: 77 },
-    { id: 2, title: 'Digital Print', price: 10, creator: 'Maker Two', category: '88', category_id: 88 },
-    { id: 3, title: 'Uncategorized Item', price: 20, creator: 'Maker Two' },
+    { id: 1, active: true, title: 'Handmade Mug', price: 30, creator: 'Maker One', category: '77', category_id: 77 },
+    { id: 2, active: true, title: 'Digital Print', price: 10, creator: 'Maker Two', category: '88', category_id: 88 },
+    { id: 3, active: true, title: 'Uncategorized Item', price: 20, creator: 'Maker Two' },
   ];
 
   beforeEach(() => {

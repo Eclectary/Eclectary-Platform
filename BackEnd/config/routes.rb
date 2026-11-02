@@ -16,6 +16,13 @@ Rails.application.routes.draw do
       resources :users, only: %i[create index]
       get "users/me", to: "users#me"
       resources :products, only: %i[index show]
+      namespace :seller do
+        resources :products, only: %i[index show create update] do
+          patch :deactivate, on: :member
+        end
+        resources :orders, only: %i[index show]
+        patch "orders/:order_id/items/:item_id/fulfillment", to: "orders#update_fulfillment"
+      end
       resources :categories, only: %i[index show]
       resources :sellers, only: %i[index show]
       resources :orders, only: %i[index show create]

@@ -40,3 +40,26 @@ export interface Order {
   created_at: string;
   updated_at: string;
 }
+
+export type FulfillmentStatus = 'unfulfilled' | 'processing' | 'fulfilled';
+
+export interface SellerOrderItem {
+  id: number;
+  product_id: number;
+  title: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  fulfillment_status: FulfillmentStatus;
+}
+
+export interface SellerOrder {
+  id: number;
+  created_at: string;
+  recipient_name: string;
+  shipping_address: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postal_code: string;
+  items: SellerOrderItem[];
+}

@@ -1,71 +1,36 @@
 import { Link } from "react-router-dom";
+
+import { useAuth } from "../context/AuthContext";
 import "../styles/DashboardHeader.css";
 
 function DashboardHeader() {
+  const { user } = useAuth();
+  const accountLabel = user?.email ?? "Seller account";
+
   return (
     <header className="dashboard-header">
-
-      {/* Mobile Menu */}
-      <button
-        type="button"
-        className="dashboard-menu-button"
-        aria-label="Open dashboard menu"
-      >
-        ☰
-      </button>
-
-
-      {/* Page Heading */}
       <div className="dashboard-header-title">
-        <h1>Creator Dashboard</h1>
+        <h1>Seller Dashboard</h1>
         <p>Manage your Eclectary shop</p>
       </div>
 
-
-      {/* Header Actions */}
       <div className="dashboard-header-actions">
+        {user && (
+          <Link to={`/seller/${user.id}`} className="dashboard-view-store">
+            View Store
+          </Link>
+        )}
 
-        {/* View Store */}
-        <Link
-          to="/"
-          className="dashboard-view-store"
-        >
-          View Store
-        </Link>
-
-
-        {/* Notifications */}
-        <button
-          type="button"
-          className="dashboard-notifications"
-          aria-label="Notifications"
-        >
-          🔔
-        </button>
-
-
-        {/* Creator Account */}
-        <Link
-          to="/dashboard/settings"
-          className="dashboard-account"
-        >
-          <div className="dashboard-avatar">
-            C
+        <div className="dashboard-account">
+          <div className="dashboard-avatar" aria-hidden="true">
+            {accountLabel.charAt(0).toUpperCase()}
           </div>
 
           <div className="dashboard-account-info">
-            <span className="dashboard-account-name">
-              Creator
-            </span>
-
-            <span className="dashboard-account-role">
-              Seller
-            </span>
+            <span className="dashboard-account-name">{accountLabel}</span>
           </div>
-        </Link>
-
+        </div>
       </div>
-
     </header>
   );
 }

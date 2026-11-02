@@ -14,6 +14,7 @@ import type { Product } from '../types';
 const productFixtures: Product[] = [
     {
       id: 1,
+      active: true,
       title: 'Moonlit Clay Mug',
       price: 34,
       creator: 'Luna & Co.',
@@ -31,6 +32,7 @@ const productFixtures: Product[] = [
     },
     {
       id: 2,
+      active: true,
       title: 'Botanical Candle Set',
       price: 28,
       creator: 'Willow Grove',
@@ -42,6 +44,7 @@ const productFixtures: Product[] = [
     },
     {
       id: 3,
+      active: true,
       title: 'Celestial Journal',
       price: 24,
       creator: 'Sage Hollow',
@@ -53,6 +56,7 @@ const productFixtures: Product[] = [
 
 const apiOnlyProduct: Product = {
   id: 987654,
+  active: true,
   title: 'Live API bowl',
   description: 'Wheel-thrown stoneware bowl',
   price: 19.99,

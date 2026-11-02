@@ -18,6 +18,7 @@ const getMock = vi.mocked(api.get);
 
 const mockProduct: Product = {
   id: 1,
+  active: true,
   title: 'Test Mug',
   price: 29.99,
   creator: 'Test Creator',
@@ -88,6 +89,7 @@ describe('ProductCard', () => {
   it('should render safely when optional product fields are unavailable', () => {
     renderProductCard({
       id: 2,
+      active: true,
       title: 'Unrated Item',
       price: 12,
       creator: 'Seller',

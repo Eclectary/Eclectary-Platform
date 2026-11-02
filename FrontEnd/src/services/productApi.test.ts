@@ -1,19 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import api from './api';
-import { getProductById, getProducts, getProductsByCategory } from './productApi';
+import {
+  createProduct,
+  deactivateProduct,
+  getProductById,
+  getProducts,
+  getProductsByCategory,
+  getSellerProduct,
+  getSellerProducts,
+  updateProduct,
+} from './productApi';
 
 vi.mock('./api', () => ({
   default: {
     get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
 const getMock = vi.mocked(api.get);
+const postMock = vi.mocked(api.post);
+const patchMock = vi.mocked(api.patch);
 
 describe('Rails product responses', () => {
   beforeEach(() => {
     getMock.mockReset();
+    postMock.mockReset();
+    patchMock.mockReset();
   });
 
   it('normalizes Rails decimal prices for all product consumers', async () => {
@@ -115,6 +130,103 @@ describe('Rails product responses', () => {
     getMock.mockRejectedValue(new Error('Network unavailable'));
     await expect(getProducts()).rejects.toThrow('Network unavailable');
     await expect(getProductById('42')).rejects.toThrow('Network unavailable');
+  });
+});
+
+describe('seller product mutations', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+    postMock.mockReset();
+    patchMock.mockReset();
+  });
+
+  const responseProduct = {
+    id: 42,
+    title: 'Seller bowl',
+    description: 'Hand-thrown',
+    price: '24.95',
+    active: true,
+    creator: 'Maker #7',
+    seller_id: 7,
+    category: '12',
+    category_id: 12,
+  };
+
+  const input = {
+    title: 'Seller bowl',
+    description: 'Hand-thrown',
+    price: '24.95',
+    category_id: 12,
+    subcategory: 'Bowls',
+  };
+
+  it('uses private seller endpoints for list and detail retrieval', async () => {
+    getMock
+      .mockResolvedValueOnce({ data: { data: [responseProduct] } })
+      .mockResolvedValueOnce({ data: { data: responseProduct } });
+
+    await expect(getSellerProducts()).resolves.toMatchObject([{ id: 42, price: 24.95, active: true }]);
+    await expect(getSellerProduct('42')).resolves.toMatchObject({ id: 42, price: 24.95, active: true });
+    expect(getMock).toHaveBeenNthCalledWith(1, '/seller/products');
+    expect(getMock).toHaveBeenNthCalledWith(2, '/seller/products/42');
+  });
+
+  it('creates a product with normalized JSON attributes when no files are selected', async () => {
+    postMock.mockResolvedValue({ data: { data: responseProduct } });
+
+    await expect(createProduct(input)).resolves.toMatchObject({ id: 42, price: 24.95 });
+    expect(postMock).toHaveBeenCalledWith('/seller/products', { product: input });
+  });
+
+  it('whitelists mutation attributes and never sends ownership, availability, or collection metadata', async () => {
+    postMock.mockResolvedValue({ data: { data: responseProduct } });
+    const unsafeInput = {
+      ...input,
+      seller_id: 99,
+      active: false,
+      collection: 'purely-handmade',
+    } as typeof input;
+
+    await createProduct(unsafeInput);
+
+    const submitted = postMock.mock.calls[0][1] as { product: Record<string, unknown> };
+    expect(submitted.product).toEqual(input);
+    expect(submitted.product).not.toHaveProperty('seller_id');
+    expect(submitted.product).not.toHaveProperty('active');
+    expect(submitted.product).not.toHaveProperty('collection');
+  });
+
+  it('updates a product and normalizes its response', async () => {
+    patchMock.mockResolvedValue({ data: { data: { ...responseProduct, title: 'Updated bowl' } } });
+
+    await expect(updateProduct('42', { ...input, title: 'Updated bowl' }))
+      .resolves.toMatchObject({ id: 42, title: 'Updated bowl', price: 24.95 });
+    expect(patchMock).toHaveBeenCalledWith('/seller/products/42', {
+      product: { ...input, title: 'Updated bowl' },
+    });
+  });
+
+  it('uses multipart field names for Rails when images are selected', async () => {
+    postMock.mockResolvedValue({ data: { data: responseProduct } });
+    const image = new File(['image bytes'], 'bowl.webp', { type: 'image/webp' });
+
+    await createProduct({ ...input, images: [image] });
+
+    const body = postMock.mock.calls[0][1] as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('product[title]')).toBe('Seller bowl');
+    expect(body.get('product[price]')).toBe('24.95');
+    expect(body.get('product[category_id]')).toBe('12');
+    expect(body.get('product[images][]')).toBe(image);
+    expect(body.has('product[seller_id]')).toBe(false);
+    expect(body.has('product[active]')).toBe(false);
+  });
+
+  it('deactivates through the dedicated member endpoint', async () => {
+    patchMock.mockResolvedValue({ data: { data: { ...responseProduct, active: false } } });
+
+    await expect(deactivateProduct(42)).resolves.toMatchObject({ id: 42, active: false });
+    expect(patchMock).toHaveBeenCalledWith('/seller/products/42/deactivate');
   });
 });
 

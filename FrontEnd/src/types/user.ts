@@ -1,12 +1,8 @@
+export type UserRole = 'customer' | 'seller' | 'administrator';
+
 export interface User {
-  id: string;
-  name: string;
+  id: number;
   email: string;
-  account: {
-    status: string;
-    createdAt?: string;
-    lastLogin?: string;
-  };
-  role: 'admin' | 'seller' | 'buyer';
+  role: UserRole;
 }
 

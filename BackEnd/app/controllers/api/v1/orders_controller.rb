@@ -40,11 +40,12 @@ module Api
           items.each do |item|
             product_id = positive_integer(item[:product_id], "product ID")
             quantity = positive_integer(item[:quantity], "quantity")
-            product = Product.find_by(id: product_id)
+            product = Product.active.find_by(id: product_id)
             raise InvalidOrderItem, "Product #{product_id} is unavailable." unless product
 
             order.order_items.create!(
               product: product,
+              seller: product.seller,
               quantity: quantity,
               price: product.price
             )

@@ -1,11 +1,13 @@
 one:
   order: one
   product: one
+  seller: two
   quantity: 1
   price: 9.99
 
 two:
   order: two
   product: two
+  seller: two
   quantity: 2
   price: 19.99

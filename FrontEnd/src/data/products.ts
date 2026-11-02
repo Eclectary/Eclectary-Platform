@@ -1,6 +1,6 @@
 import type { Product } from '../types';
 
-export const products: Product[] = [
+const productData: Array<Omit<Product, 'active'>> = [
   {
     id: 1,
     title: 'Moonlit Clay Mug',
@@ -158,3 +158,8 @@ export const products: Product[] = [
     image: '/product-images/terracotta-candle-trio.png',
   },
 ];
+
+export const products: Product[] = productData.map((product) => ({
+  ...product,
+  active: true,
+}));

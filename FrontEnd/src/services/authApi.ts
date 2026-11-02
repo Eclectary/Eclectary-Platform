@@ -1,4 +1,5 @@
 import api from "./api";
+import type { User } from "../types/user";
 
 export interface LoginCredentials {
   email: string;
@@ -24,7 +25,7 @@ export const register = async (userData: RegisterData) => {
 };
 
 export const getCurrentUser = async () => {
-  const response = await api.get("/users/me");
+  const response = await api.get<User>("/users/me");
   return response.data;
 };
 

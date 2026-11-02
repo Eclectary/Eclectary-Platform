@@ -16,14 +16,15 @@ function CurrentLocation() {
   return <output data-testid="location">{location.pathname}</output>;
 }
 
-function renderProtectedRoute() {
+function renderProtectedRoute(allowedRoles?: Array<'customer' | 'seller' | 'administrator'>) {
   return render(
     <MemoryRouter initialEntries={['/protected']}>
       <Routes>
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={allowedRoles} />}>
           <Route path="/protected" element={<h1>Protected content</h1>} />
         </Route>
         <Route path="/account/login" element={<h1>Login</h1>} />
+        <Route path="/" element={<h1>Home</h1>} />
       </Routes>
       <CurrentLocation />
     </MemoryRouter>,
@@ -66,6 +67,38 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByRole('heading', { name: 'Protected content' })).toBeInTheDocument();
     expect(screen.getByTestId('location')).toHaveTextContent('/protected');
+  });
+
+  it('renders role-protected content for an authenticated user with an allowed role', () => {
+    useAuthMock.mockReturnValue({
+      user: { id: 7, email: 'seller@example.com', role: 'seller' },
+      token: 'stored-token',
+      loading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderProtectedRoute(['seller']);
+
+    expect(screen.getByRole('heading', { name: 'Protected content' })).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/protected');
+  });
+
+  it.each(['customer', 'administrator'] as const)('redirects an authenticated %s without the required role', (role) => {
+    useAuthMock.mockReturnValue({
+      user: { id: 7, email: `${role}@example.com`, role },
+      token: 'stored-token',
+      loading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderProtectedRoute(['seller']);
+
+    expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/');
   });
 
   it('redirects an unauthenticated user after initialization', () => {

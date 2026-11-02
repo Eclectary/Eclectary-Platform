@@ -1,0 +1,75 @@
+.seller-orders {
+  padding: 1.5rem;
+}
+
+.seller-orders__header,
+.seller-orders__state {
+  margin-bottom: 1.5rem;
+}
+
+.seller-orders__list,
+.seller-order-card__items {
+  display: grid;
+  gap: 1rem;
+}
+
+.seller-order-card {
+  border: 1px solid #e1e1e1;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.seller-order-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f7f7f7;
+}
+
+.seller-order-card__header h3,
+.seller-order-card__header p,
+.seller-order-item h4,
+.seller-order-item p {
+  margin: 0 0 0.35rem;
+}
+
+.seller-order-card__header address {
+  font-style: normal;
+  text-align: right;
+}
+
+.seller-order-card__items {
+  padding: 1rem;
+}
+
+.seller-order-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.seller-order-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.seller-order-item__error {
+  grid-column: 1 / -1;
+  color: #b42318;
+}
+
+@media (max-width: 640px) {
+  .seller-order-card__header,
+  .seller-order-item {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .seller-order-card__header address {
+    text-align: left;
+  }
+}

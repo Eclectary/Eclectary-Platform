@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { BrowserRouter, Link, Navigate, Routes, Route, useParams } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { BrowserRouter, Link, Navigate, Routes, Route } from "react-router-dom";
 
 import MainLayout from "./layouts/MainLayout";
-import SellerLayout from "./layouts/SellerLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
@@ -18,12 +17,12 @@ import Orders from "./pages/Orders";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import AddProduct from "./pages/AddProduct";
+import EditProduct from "./pages/EditProduct";
+import SellerOrders from "./pages/SellerOrders";
 import ProductCard from "./components/ProductCard";
-import SellerCard from "./components/SellerCard";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { products } from "./data/products";
-import { categories, isValidCategorySelection } from "./data/categories";
-import { getSellers } from "./services/sellerApi";
+import { deactivateProduct, getSellerProducts } from "./services/productApi";
 import { useAuth } from "./context/AuthContext";
 import type { Product } from "./types";
 import "./App.css";
@@ -41,137 +40,158 @@ function About() {
   return <div style={{ padding: 24 }}><h2>About</h2><p>About Eclectary.</p></div>
 }
 
-function SellerHome() {
-  const sellers = getSellers();
+function useSellerProducts() {
+  const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  return (
-    <section style={{ padding: 24 }}>
-      <h2>Seller Portal</h2>
-      <p>{sellers.length} makers are currently represented in the marketplace.</p>
-      <div className="shop-sellers-grid">
-        {sellers.slice(0, 3).map((seller) => <SellerCard key={seller.id} seller={seller} />)}
-      </div>
-    </section>
-  )
+  const retry = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      setSellerProducts(await getSellerProducts());
+    } catch {
+      setError("We could not load your products. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void getSellerProducts()
+      .then((products) => {
+        if (active) {
+          setSellerProducts(products);
+          setError(null);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError("We could not load your products. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const replaceProduct = useCallback((updatedProduct: Product) => {
+    setSellerProducts((current) => current.map((product) => (
+      product.id === updatedProduct.id ? updatedProduct : product
+    )));
+  }, []);
+
+  return { sellerProducts, loading, error, retry, replaceProduct };
 }
 
 function DashboardOverview() {
-  const totalValue = products.reduce((sum, product) => sum + product.price, 0);
+  const { sellerProducts, loading, error, retry } = useSellerProducts();
 
   return (
     <section style={{ padding: 24 }}>
       <h2>Dashboard</h2>
-      <p>Marketplace data at a glance.</p>
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", marginTop: 24 }}>
-        <strong>{products.length} products</strong>
-        <strong>{getSellers().length} sellers</strong>
-        <strong>${totalValue.toFixed(2)} catalog value</strong>
-      </div>
+      <p>Manage your products and public store.</p>
+
+      {loading && <p role="status">Loading your product information...</p>}
+
+      {!loading && error && (
+        <div role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={() => void retry()}>Retry</button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div style={{ marginTop: 24 }}>
+          <strong>Your Products: {sellerProducts.length}</strong>
+          <p>
+            {sellerProducts.length === 0
+              ? "You do not have any products yet."
+              : "Review the products currently associated with your seller account."}
+          </p>
+          <Link to={sellerProducts.length === 0 ? "/dashboard/products/new" : "/dashboard/products"}>
+            {sellerProducts.length === 0 ? "Add Product" : "Manage Products"}
+          </Link>
+        </div>
+      )}
     </section>
   )
 }
 
 function Products() {
+  const { sellerProducts, loading, error, retry, replaceProduct } = useSellerProducts();
+  const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const deactivate = async (product: Product) => {
+    setDeactivatingId(product.id);
+    setActionError(null);
+    try {
+      replaceProduct(await deactivateProduct(product.id));
+    } catch {
+      setActionError(`We could not deactivate ${product.title}. Please try again.`);
+    } finally {
+      setDeactivatingId(null);
+    }
+  };
+
   return (
     <section style={{ padding: 24 }}>
-      <h2>Products</h2>
-      <p>{products.length} products from the mock catalog.</p>
-      <div className="shop-grid" style={{ marginTop: 24 }}>
-        {products.map((product) => (
-          <div key={product.id}>
-            <ProductCard product={product} />
-            <Link to={`/dashboard/products/${product.id}/edit`}>Edit listing</Link>
+      <h2>Your Products</h2>
+      <p><Link to="/dashboard/products/new">Add Product</Link></p>
+
+      {actionError && <p role="alert">{actionError}</p>}
+
+      {loading && <p role="status">Loading your products...</p>}
+
+      {!loading && error && (
+        <div role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={() => void retry()}>Retry</button>
+        </div>
+      )}
+
+      {!loading && !error && sellerProducts.length === 0 && (
+        <div role="status">
+          <p>You do not have any products yet.</p>
+          <Link to="/dashboard/products/new">Add Product</Link>
+        </div>
+      )}
+
+      {!loading && !error && sellerProducts.length > 0 && (
+        <>
+          <p>{sellerProducts.length} {sellerProducts.length === 1 ? "product" : "products"}</p>
+          <div className="shop-grid" style={{ marginTop: 24 }}>
+            {sellerProducts.map((product) => (
+              <article key={product.id}>
+                <ProductCard product={product} />
+                <p><strong>{product.active ? "Active" : "Inactive"}</strong></p>
+                <p><Link to={`/dashboard/products/${product.id}/edit`}>Edit</Link></p>
+                {product.active && (
+                  <button
+                    type="button"
+                    disabled={deactivatingId === product.id}
+                    onClick={() => void deactivate(product)}
+                  >
+                    {deactivatingId === product.id ? "Deactivating..." : "Deactivate"}
+                  </button>
+                )}
+              </article>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </section>
   )
-}
-
-function ListingForm({ product }: { product?: Product }) {
-  const [collection, setCollection] = useState<Product['collection']>(product?.collection ?? 'digital-creations');
-  const [categoryId, setCategoryId] = useState(product?.category ?? '');
-  const [subcategory, setSubcategory] = useState(product?.subcategory ?? '');
-  const [message, setMessage] = useState('');
-  const departmentCategories = categories.filter((category) => category.collection === collection);
-  const selectedCategory = departmentCategories.find((category) => category.id === categoryId);
-
-  const collectionNames: Record<NonNullable<Product['collection']>, string> = {
-    'custom-printing': 'Custom Printing',
-    'purely-handmade': 'Handmade',
-    'digital-creations': 'Digital Creations',
-  };
-
-  const selectCollection = (nextCollection: Product['collection']) => {
-    setCollection(nextCollection);
-    setCategoryId('');
-    setSubcategory('');
-    setMessage('');
-  };
-
-  const selectCategory = (nextCategoryId: string) => {
-    setCategoryId(nextCategoryId);
-    setSubcategory('');
-    setMessage('');
-  };
-
-  const submitListing = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage(
-      collection && isValidCategorySelection(collection, categoryId, subcategory)
-        ? `${collectionNames[collection]} category selection is valid.`
-        : `Choose a ${collection ? collectionNames[collection] : 'department'} category and one of its subcategories.`,
-    );
-  };
-
-  return (
-    <section style={{ padding: 24, maxWidth: 640 }}>
-      <h2>{product ? 'Edit Listing' : 'Add Listing'}</h2>
-      <form onSubmit={submitListing}>
-        <label style={{ display: 'grid', gap: 6, marginTop: 16 }}>
-          <span>Department</span>
-          <select value={collection} onChange={(event) => selectCollection(event.target.value as Product['collection'])} required>
-            <option value="digital-creations">Digital Creations</option>
-            <option value="purely-handmade">Handmade</option>
-            <option value="custom-printing">Custom Printing</option>
-          </select>
-        </label>
-        <label style={{ display: 'grid', gap: 6, marginTop: 16 }}>
-          <span>Category</span>
-          <select value={categoryId} onChange={(event) => selectCategory(event.target.value)} required>
-            <option value="">Choose a category</option>
-            {departmentCategories.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </select>
-        </label>
-        <label style={{ display: 'grid', gap: 6, marginTop: 16 }}>
-          <span>Subcategory</span>
-          <select value={subcategory} onChange={(event) => setSubcategory(event.target.value)} required disabled={!selectedCategory}>
-            <option value="">Choose a subcategory</option>
-            {selectedCategory?.childSubcategories?.map((child) => (
-              <option key={child} value={child}>{child}</option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" style={{ marginTop: 20 }}>{product ? 'Validate changes' : 'Validate listing'}</button>
-      </form>
-      {message && <p aria-live="polite">{message}</p>}
-    </section>
-  );
-}
-
-function AddProduct() {
-  return <ListingForm />;
-}
-
-function EditProduct() {
-  const { id } = useParams();
-  const product = products.find((item) => item.id === Number(id));
-
-  return product?.collection
-    ? <ListingForm product={product} />
-    : <section style={{ padding: 24 }}><h2>Listing unavailable</h2><p>This listing does not have a valid department.</p></section>;
 }
 
 function AccountIndex() {
@@ -221,19 +241,16 @@ function App() {
           <Route path="/order" element={<OrderConfirmation />} />
         </Route>
 
-        <Route element={<ProtectedRoute />}>
-          {/* Seller routes */}
-          <Route path="/seller" element={<SellerLayout />}>
-            <Route index element={<SellerHome />} />
-          </Route>
+        <Route element={<ProtectedRoute allowedRoles={["seller"]} />}>
+          <Route path="/seller" element={<Navigate to="/dashboard" replace />} />
 
-          {/* Creator dashboard routes */}
+          {/* Seller dashboard routes */}
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path="products" element={<Products />} />
             <Route path="products/new" element={<AddProduct />} />
             <Route path="products/:id/edit" element={<EditProduct />} />
-            <Route path="orders" element={<div style={{ padding: 24 }}>Orders</div>} />
+            <Route path="orders" element={<SellerOrders />} />
             <Route path="settings" element={<div style={{ padding: 24 }}>Settings</div>} />
           </Route>
         </Route>

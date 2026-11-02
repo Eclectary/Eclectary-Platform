@@ -42,8 +42,8 @@ afterEach(cleanup);
 describe('public seller shop links', () => {
   it('loads the real seller and filters products by seller ID, not creator name', async () => {
     getProductsMock.mockResolvedValue([
-      { id: 1, title: 'Real bowl', price: 25, creator: 'Private account name', seller_id: 42 },
-      { id: 2, title: 'Another shop', price: 15, creator: 'Clay Studio', seller_id: 99 },
+      { id: 1, active: true, title: 'Real bowl', price: 25, creator: 'Private account name', seller_id: 42 },
+      { id: 2, active: true, title: 'Another shop', price: 15, creator: 'Clay Studio', seller_id: 99 },
     ]);
     renderShop();
     expect(screen.getByRole('status')).toHaveTextContent('Loading shop...');

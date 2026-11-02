@@ -24,7 +24,7 @@ const registerApiMock = vi.mocked(registerApi);
 const currentUser = {
   id: 7,
   email: 'member@example.com',
-  role: 'customer',
+  role: 'customer' as const,
 };
 
 function AuthState() {

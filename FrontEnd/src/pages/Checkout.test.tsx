@@ -19,7 +19,7 @@ const useAuthMock = vi.mocked(useAuth);
 const useCartMock = vi.mocked(useCart);
 const createOrderMock = vi.mocked(createOrder);
 const clearCart = vi.fn();
-const product = { id: 42, title: 'API-only vase', price: 19.99, image: '/real.jpg', creator: 'Real Maker' };
+const product = { id: 42, active: true, title: 'API-only vase', price: 19.99, image: '/real.jpg', creator: 'Real Maker' };
 const availableItem = { productId: 42, quantity: 2, product, status: 'available' as const };
 
 const order: Order = {

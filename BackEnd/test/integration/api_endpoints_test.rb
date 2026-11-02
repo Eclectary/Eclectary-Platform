@@ -20,7 +20,7 @@ class ApiEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal %w[data pagination], body.keys.sort
     assert_equal products.count, body["data"].length
     assert_equal products.count, body.dig("pagination", "total")
-    assert_equal %w[category category_id category_name created_at creator description id image images price seller_id subcategory title updated_at], body["data"].first.keys.sort
+    assert_equal %w[active category category_id category_name created_at creator description id image images price seller_id subcategory title updated_at], body["data"].first.keys.sort
 
     product = body["data"].first
     seller = Product.find(product["id"]).seller
@@ -106,20 +106,20 @@ class ApiEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "orders returns serialized data" do
-      get "/api/v1/orders", headers: auth_headers(users(:one))
+    get "/api/v1/orders", headers: auth_headers(users(:one))
 
     assert_response :success
     body = JSON.parse(response.body)
     assert_equal %w[data], body.keys.sort
-      assert_equal Order.where(user: users(:one)).count, body["data"].length
-    assert_equal %w[created_at id status updated_at user_id], body["data"].first.keys.sort
+    assert_equal Order.where(user: users(:one)).count, body["data"].length
+    assert_equal %w[created_at customer_email customer_name customer_phone final_total id items shipping_address shipping_amount shipping_city shipping_postal_code shipping_state status subtotal updated_at user_id], body["data"].first.keys.sort
   end
 
-    test "orders require authentication" do
-      get "/api/v1/orders"
+  test "orders require authentication" do
+    get "/api/v1/orders"
 
-      assert_response :unauthorized
-    end
+    assert_response :unauthorized
+  end
 
   test "users me returns the authenticated user" do
     get "/api/v1/users/me", headers: auth_headers(users(:one))

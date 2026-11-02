@@ -37,7 +37,7 @@ vi.mock('../components/ProductCard', () => ({
   default: ({ product }: { product: Product }) => <p>{product.title}</p>,
 }));
 
-const product: Product = { id: 1, title: 'Silver Ring', price: 20, creator: 'Maker' };
+const product: Product = { id: 1, active: true, title: 'Silver Ring', price: 20, creator: 'Maker' };
 const categoryFixtures = [
   { id: 'jewelry', apiId: 31, slug: 'jewelry', name: 'Jewelry', image: '/jewelry.jpg', childSubcategories: ['Rings'] },
   { id: 'art', apiId: 32, slug: 'art', name: 'Art', image: '/art.jpg' },
@@ -196,9 +196,9 @@ describe('Category asynchronous products', () => {
     ['price-desc', ['Expensive Old', 'Mid Newest', 'Cheap Middle']],
   ] as const)('sorts category products by %s', async (sort, expectedTitles) => {
     getProductsMock.mockResolvedValue([
-      { id: 1, title: 'Expensive Old', price: 30, creator: 'Maker', created_at: '2026-01-01T12:00:00Z' },
-      { id: 2, title: 'Mid Newest', price: 20, creator: 'Maker', created_at: '2026-03-01T12:00:00Z' },
-      { id: 3, title: 'Cheap Middle', price: 10, creator: 'Maker', created_at: '2026-02-01T12:00:00Z' },
+      { id: 1, active: true, title: 'Expensive Old', price: 30, creator: 'Maker', created_at: '2026-01-01T12:00:00Z' },
+      { id: 2, active: true, title: 'Mid Newest', price: 20, creator: 'Maker', created_at: '2026-03-01T12:00:00Z' },
+      { id: 3, active: true, title: 'Cheap Middle', price: 10, creator: 'Maker', created_at: '2026-02-01T12:00:00Z' },
     ]);
     const user = userEvent.setup();
 

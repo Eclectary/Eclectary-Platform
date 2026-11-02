@@ -13,6 +13,7 @@ class ProductSerializer
       title: @product.title,
       description: @product.description,
       price: @product.price,
+      active: @product.active,
       image: image_urls.first,
       images: image_urls,
       creator: @product.seller.public_name.presence || "Maker ##{@product.seller.id}",

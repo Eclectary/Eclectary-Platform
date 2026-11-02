@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_28_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -68,13 +68,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_120000) do
 
   create_table "order_items", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "fulfillment_status", default: "unfulfilled", null: false
     t.bigint "order_id", null: false
     t.decimal "price", null: false
     t.bigint "product_id", null: false
     t.integer "quantity", default: 1, null: false
+    t.bigint "seller_id", null: false
     t.datetime "updated_at", null: false
     t.index ["order_id"], name: "index_order_items_on_order_id"
     t.index ["product_id"], name: "index_order_items_on_product_id"
+    t.index ["seller_id", "order_id"], name: "index_order_items_on_seller_id_and_order_id"
   end
 
   create_table "orders", force: :cascade do |t|
@@ -94,6 +97,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_120000) do
   end
 
   create_table "products", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.bigint "category_id", null: false
     t.datetime "created_at", null: false
     t.text "description"
@@ -126,6 +130,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_120000) do
   add_foreign_key "carts", "users"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "products"
+  add_foreign_key "order_items", "users", column: "seller_id"
   add_foreign_key "orders", "users"
   add_foreign_key "products", "categories"
   add_foreign_key "products", "users", column: "seller_id"

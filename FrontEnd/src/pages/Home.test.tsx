@@ -30,6 +30,7 @@ const getPublicSellersMock = vi.mocked(getPublicSellers);
 
 const products: Product[] = Array.from({ length: 6 }, (_, index) => ({
   id: index + 1,
+  active: true,
   title: `Product ${index + 1}`,
   price: 12,
   creator: 'Test maker',

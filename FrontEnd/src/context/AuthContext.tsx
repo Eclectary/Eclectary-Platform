@@ -11,13 +11,7 @@ import {
 } from "../services/tokenStorage";
 import { AuthSessionValidationError } from "../services/authErrors";
 import { AUTH_SESSION_UNAUTHORIZED_EVENT } from "../services/authSession";
-
-
-interface User {
-  id: number;
-  email: string;
-  role: string;
-}
+import type { User } from "../types/user";
 
 interface AuthContextType {
   user: User | null;

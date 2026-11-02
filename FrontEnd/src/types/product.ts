@@ -5,6 +5,7 @@ export interface Product {
 	title: string;
 	description?: string;
 	price: number;
+	active: boolean;
 	image?: string | null;
 	images?: string[];
 	collection?: 'custom-printing' | 'purely-handmade' | 'digital-creations';
@@ -19,6 +20,6 @@ export interface Product {
 	tag?: string;
 	rating?: number;
 	reviewCount?: number;
-	status?: string;
 	created_at?: string;
+	updated_at?: string;
 }

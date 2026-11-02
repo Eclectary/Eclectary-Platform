@@ -3,6 +3,7 @@ class User < ApplicationRecord
 
   has_many :products, foreign_key: :seller_id, dependent: :destroy
   has_many :orders, dependent: :destroy
+  has_many :sold_order_items, class_name: "OrderItem", foreign_key: :seller_id, inverse_of: :seller
 
   validates :email, presence: true, uniqueness: true
   validates :role, presence: true, inclusion: { in: %w[customer seller administrator] }

@@ -42,6 +42,8 @@ class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "pending", order.status
     assert_equal BigDecimal("6.50"), order.shipping_amount
     assert_equal [ products(:one).price, products(:two).price ], order.order_items.order(:id).map(&:price)
+    assert_equal [ users(:two).id, users(:two).id ], order.order_items.order(:id).map(&:seller_id)
+    assert_equal [ "unfulfilled", "unfulfilled" ], order.order_items.order(:id).map(&:fulfillment_status)
 
     body = JSON.parse(response.body).fetch("data")
     assert_equal order.id, body.fetch("id")
@@ -67,6 +69,8 @@ class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
       shipping_amount: 0
     )
     payload[:order][:items].first[:price] = 0
+    payload[:order][:items].first[:seller_id] = users(:one).id
+    payload[:order][:items].first[:fulfillment_status] = "fulfilled"
 
     post "/api/v1/orders", params: payload, headers: auth_headers
 
@@ -76,6 +80,8 @@ class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "pending", order.status
     assert_equal BigDecimal("6.50"), order.shipping_amount
     assert_equal products(:one).price, order.order_items.order(:id).first.price
+    assert_equal products(:one).seller, order.order_items.order(:id).first.seller
+    assert_equal "unfulfilled", order.order_items.order(:id).first.fulfillment_status
   end
 
   test "create rejects an empty item list" do
@@ -104,6 +110,19 @@ class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
   test "a missing product rolls back the entire order and every item" do
     payload = valid_order_payload
     payload[:order][:items] << { product_id: Product.maximum(:id) + 1_000, quantity: 1 }
+
+    assert_no_difference [ -> { Order.count }, -> { OrderItem.count } ] do
+      post "/api/v1/orders", params: payload, headers: auth_headers
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body).fetch("errors").join, "unavailable"
+  end
+
+  test "an inactive product cannot be purchased" do
+    products(:one).update!(active: false)
+    payload = valid_order_payload
+    payload[:order][:items] = [ { product_id: products(:one).id, quantity: 1 } ]
 
     assert_no_difference [ -> { Order.count }, -> { OrderItem.count } ] do
       post "/api/v1/orders", params: payload, headers: auth_headers

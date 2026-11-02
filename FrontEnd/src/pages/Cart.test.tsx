@@ -16,6 +16,7 @@ vi.mock('../services/productApi', () => ({
 const CART_STORAGE_KEY = 'eclectary-cart';
 const apiProduct: Product = {
   id: 987654,
+  active: true,
   title: 'Live API Bowl',
   price: 19.99,
   creator: 'Public Clay Studio',
