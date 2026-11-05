@@ -5,7 +5,8 @@ class Product < ApplicationRecord
   belongs_to :seller, class_name: "User"
   belongs_to :category
   has_many_attached :images
-  has_many :order_items
+  has_many :cart_items, dependent: :restrict_with_error
+  has_many :order_items, dependent: :restrict_with_error
   has_many :orders, through: :order_items
 
   scope :active, -> { where(active: true) }

@@ -28,8 +28,8 @@ class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
     assert body.fetch("data").all? { |product| product.fetch("category_id") == categories(:one).id }
   end
 
-  test "index safely returns no products for malformed or nonexistent categories" do
-    [ "not-a-number", -1, Category.maximum(:id) + 1 ].each do |category_id|
+  test "index safely returns no products for nonpositive malformed or nonexistent categories" do
+    [ 0, -1, "not-a-number", Category.maximum(:id) + 1 ].each do |category_id|
       get "/api/v1/products", params: { category_id: category_id }
 
       assert_response :success

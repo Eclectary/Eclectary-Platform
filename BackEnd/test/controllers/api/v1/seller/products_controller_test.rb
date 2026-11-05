@@ -156,6 +156,19 @@ class Api::V1::Seller::ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_equal BigDecimal("8.25"), products(:one).price
   end
 
+  test "seller update rejects a nonexistent category" do
+    product = products(:one)
+    original_category = product.category
+
+    patch "/api/v1/seller/products/#{product.id}",
+      params: { product: { category_id: Category.maximum(:id) + 1_000 } },
+      headers: auth_headers
+
+    assert_response :unprocessable_entity
+    assert_equal original_category, product.reload.category
+    assert JSON.parse(response.body).fetch("errors").any?
+  end
+
   test "seller can retrieve an owned inactive product" do
     products(:one).update!(active: false)
 
