@@ -1,5 +1,12 @@
 export const AUTH_SESSION_UNAUTHORIZED_EVENT = "eclectary:auth-session-unauthorized";
 
-export function notifyUnauthorizedAuthSession() {
-  window.dispatchEvent(new Event(AUTH_SESSION_UNAUTHORIZED_EVENT));
+export interface UnauthorizedAuthSessionDetail {
+  token: string;
+}
+
+export function notifyUnauthorizedAuthSession(token: string) {
+  window.dispatchEvent(new CustomEvent<UnauthorizedAuthSessionDetail>(
+    AUTH_SESSION_UNAUTHORIZED_EVENT,
+    { detail: { token } },
+  ));
 }

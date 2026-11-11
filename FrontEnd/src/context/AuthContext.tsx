@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   getCurrentUser,
   login as loginApi,
@@ -10,7 +10,10 @@ import {
   storeToken,
 } from "../services/tokenStorage";
 import { AuthSessionValidationError } from "../services/authErrors";
-import { AUTH_SESSION_UNAUTHORIZED_EVENT } from "../services/authSession";
+import {
+  AUTH_SESSION_UNAUTHORIZED_EVENT,
+  type UnauthorizedAuthSessionDetail,
+} from "../services/authSession";
 import type { User } from "../types/user";
 
 interface AuthContextType {
@@ -32,15 +35,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [loading, setLoading] = useState(true);
+  const activeToken = useRef(token);
+  const sessionVersion = useRef(0);
+  const pendingSessionVersion = useRef<number | null>(token ? 0 : null);
 
   const clearAuthentication = useCallback(() => {
+    sessionVersion.current += 1;
+    pendingSessionVersion.current = null;
+    activeToken.current = null;
     clearStoredToken();
     setToken(null);
     setUser(null);
   }, []);
 
+  const startAuthenticationRequest = () => {
+    const requestVersion = ++sessionVersion.current;
+
+    if (pendingSessionVersion.current !== null) {
+      pendingSessionVersion.current = null;
+      activeToken.current = null;
+      clearStoredToken();
+      setToken(null);
+      setUser(null);
+    }
+
+    return requestVersion;
+  };
+
   useEffect(() => {
-    const handleUnauthorizedSession = () => clearAuthentication();
+    const handleUnauthorizedSession = (event: Event) => {
+      const unauthorizedEvent = event as CustomEvent<UnauthorizedAuthSessionDetail>;
+
+      if (unauthorizedEvent.detail?.token === activeToken.current) {
+        clearAuthentication();
+      }
+    };
 
     window.addEventListener(
       AUTH_SESSION_UNAUTHORIZED_EVENT,
@@ -57,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const restoreSession = async () => {
+      const requestVersion = sessionVersion.current;
       const storedToken = getStoredToken();
 
       if (!storedToken) {
@@ -66,9 +96,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const currentUser = await getCurrentUser();
-        setUser(currentUser);
+        if (sessionVersion.current === requestVersion) {
+          pendingSessionVersion.current = null;
+          setUser(currentUser);
+        }
       } catch {
-        clearAuthentication();
+        if (sessionVersion.current === requestVersion) {
+          clearAuthentication();
+        }
       } finally {
         setLoading(false);
       }
@@ -78,17 +113,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [clearAuthentication]);
 
   const login = async (email: string, password: string, rememberMe: boolean) => {
+    const requestVersion = startAuthenticationRequest();
     const data = await loginApi({ email, password });
 
-    setUser(null);
+    if (sessionVersion.current !== requestVersion) return;
+
     storeToken(data.token, rememberMe);
+    pendingSessionVersion.current = requestVersion;
+    activeToken.current = data.token;
     setToken(data.token);
 
     try {
       const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      if (sessionVersion.current === requestVersion) {
+        pendingSessionVersion.current = null;
+        setUser(currentUser);
+      }
     } catch (error) {
-      clearAuthentication();
+      if (sessionVersion.current === requestVersion) {
+        clearAuthentication();
+      }
       throw new AuthSessionValidationError(error);
     }
   };
@@ -98,22 +142,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     passwordConfirmation: string
   ) => {
+    const requestVersion = startAuthenticationRequest();
     const data = await registerApi({
       email,
       password,
       password_confirmation: passwordConfirmation,
     });
 
+    if (sessionVersion.current !== requestVersion) return;
+
     if (data.token) {
-      setUser(null);
       storeToken(data.token, true);
+      pendingSessionVersion.current = requestVersion;
+      activeToken.current = data.token;
       setToken(data.token);
 
       try {
         const currentUser = await getCurrentUser();
-        setUser(currentUser);
+        if (sessionVersion.current === requestVersion) {
+          pendingSessionVersion.current = null;
+          setUser(currentUser);
+        }
       } catch (error) {
-        clearAuthentication();
+        if (sessionVersion.current === requestVersion) {
+          clearAuthentication();
+        }
         throw new AuthSessionValidationError(error);
       }
     }
