@@ -5,6 +5,7 @@ import { AxiosError, AxiosHeaders } from 'axios';
 import userEvent from '@testing-library/user-event';
 import ProductDetail from '../pages/ProductDetail';
 import Cart from '../pages/Cart';
+import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
 import { WishlistProvider } from '../context/WishlistContext';
 import { getProductById, getProducts } from '../services/productApi';
@@ -109,30 +110,34 @@ beforeEach(() => {
 const renderProductDetailWithId = (productId: string | number = 1) => {
   return render(
     <MemoryRouter initialEntries={[`/product/${productId}`]}>
-      <CartProvider>
-        <WishlistProvider>
-          <Routes>
-            <Route path="/product/:id" element={<ProductDetail />} />
-          </Routes>
-        </WishlistProvider>
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <Routes>
+              <Route path="/product/:id" element={<ProductDetail />} />
+            </Routes>
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
     </MemoryRouter>,
   );
 };
 
 const renderProductDetailWithCart = (productId: string | number) => render(
   <MemoryRouter initialEntries={[`/product/${productId}`]}>
-    <CartProvider>
-      <WishlistProvider>
-        <Routes>
-          <Route
-            path="/product/:id"
-            element={<><ProductDetail /><Link to="/cart">View cart</Link></>}
-          />
-          <Route path="/cart" element={<Cart />} />
-        </Routes>
-      </WishlistProvider>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <Routes>
+            <Route
+              path="/product/:id"
+              element={<><ProductDetail /><Link to="/cart">View cart</Link></>}
+            />
+            <Route path="/cart" element={<Cart />} />
+          </Routes>
+        </WishlistProvider>
+      </CartProvider>
+    </AuthProvider>
   </MemoryRouter>,
 );
 

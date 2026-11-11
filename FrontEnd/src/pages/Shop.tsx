@@ -71,6 +71,11 @@ function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearchTerm = searchParams.get('search') ?? '';
   const [searchTerm, setSearchTerm] = useState(urlSearchTerm);
+  const [previousUrlSearchTerm, setPreviousUrlSearchTerm] = useState(urlSearchTerm);
+  if (previousUrlSearchTerm !== urlSearchTerm) {
+    setPreviousUrlSearchTerm(urlSearchTerm);
+    setSearchTerm(urlSearchTerm);
+  }
   const isLoggedIn = !loading && Boolean(user && token);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -192,10 +197,6 @@ function Shop() {
       setCategoriesLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    setSearchTerm(urlSearchTerm);
-  }, [urlSearchTerm]);
 
   useEffect(() => {
     let active = true;

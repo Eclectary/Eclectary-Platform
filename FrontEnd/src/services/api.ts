@@ -16,7 +16,7 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getStoredToken();
 
-  if (token) {
+  if (token && !config.headers.has("Authorization")) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -43,6 +43,7 @@ api.interceptors.response.use(
       && authorization
       && !isAuthenticationAttempt(request?.method, request?.url)
       && getStoredToken()
+      && authorization === `Bearer ${getStoredToken()}`
     ) {
       clearStoredToken();
       notifyUnauthorizedAuthSession();

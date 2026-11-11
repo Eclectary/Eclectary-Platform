@@ -66,9 +66,11 @@ describe('createOrder', () => {
       },
     });
 
-    const order = await createOrder(request);
+    const order = await createOrder(request, 'test-token');
 
-    expect(postMock).toHaveBeenCalledWith('/orders', { order: request });
+    expect(postMock).toHaveBeenCalledWith('/orders', { order: request }, {
+      headers: { Authorization: 'Bearer test-token' },
+    });
     expect(order).toMatchObject({ shipping_amount: 6.5, subtotal: 39.98, final_total: 46.48 });
     expect(order.items[0].price).toBe(19.99);
     expect(postMock.mock.calls[0][1]).not.toHaveProperty('order.user_id');

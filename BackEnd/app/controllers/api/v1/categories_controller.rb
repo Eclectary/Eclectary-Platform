@@ -2,7 +2,7 @@ module Api
   module V1
     class CategoriesController < BaseController
       def index
-        categories = Category.all
+        categories = Category.order(:name, :id)
 
         render json: {
           data: categories.map { |category| CategorySerializer.new(category).as_json }

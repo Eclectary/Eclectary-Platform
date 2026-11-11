@@ -8,6 +8,7 @@ module ForeignKeySafeFixtureLoading
     categories
     products
     carts
+    cart_merges
     orders
     cart_items
     order_items
@@ -82,7 +83,7 @@ module ActiveSupport
     parallelize(workers: 1)
 
     # Setup all fixtures while retaining Rails fixture accessors and transactions.
-    fixtures :users, :categories, :products, :carts, :cart_items, :orders, :order_items
+    fixtures :users, :categories, :products, :carts, :cart_merges, :cart_items, :orders, :order_items
     prepend ForeignKeySafeFixtureLoading
 
     # Add more helper methods to be used by all tests here...

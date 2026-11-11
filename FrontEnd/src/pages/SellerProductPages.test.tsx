@@ -97,6 +97,7 @@ describe('seller product pages', () => {
     renderPage('/dashboard/products/42/edit');
 
     expect(await screen.findByDisplayValue('Existing bowl')).toBeInTheDocument();
+    await screen.findByRole('option', { name: 'Ceramics' });
     expect(getSellerProductMock).toHaveBeenCalledWith('42');
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Updated bowl' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
@@ -113,6 +114,7 @@ describe('seller product pages', () => {
     updateProductMock.mockRejectedValue(new Error('Unavailable'));
     renderPage('/dashboard/products/42/edit');
     expect(await screen.findByDisplayValue('Existing bowl')).toBeInTheDocument();
+    await screen.findByRole('option', { name: 'Ceramics' });
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Unsaved bowl' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));

@@ -1,26 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
-import type { Order } from '../types/order';
+import { useCheckout } from '../context/CheckoutContext';
 import '../styles/checkout.css';
 
-interface OrderConfirmationState {
-  order?: Order;
-}
-
 export default function OrderConfirmation() {
-  const { state } = useLocation() as { state: OrderConfirmationState | null };
-  const order = state?.order;
+  const { state: navigationState } = useLocation();
+  const { state: checkoutState } = useCheckout();
+  const orderId: unknown = navigationState && typeof navigationState === 'object'
+    ? Reflect.get(navigationState, 'orderId')
+    : undefined;
 
-  if (!order) {
+  if (checkoutState.status !== 'success' || checkoutState.order.id !== orderId) {
     return (
       <main className="checkout-page">
         <section className="checkout-empty">
           <h1>Order confirmation unavailable</h1>
-          <p>This page does not contain an order confirmation. No new order was created.</p>
+          <p>We could not find this order confirmation for your current account.</p>
           <Link className="checkout-button" to="/shop">Continue shopping</Link>
         </section>
       </main>
     );
   }
+
+  const { order, cartClearWarning } = checkoutState;
 
   return (
     <main className="checkout-page order-confirmation">
@@ -31,6 +32,9 @@ export default function OrderConfirmation() {
           Order <strong>#{order.id}</strong> was created successfully. Payment has not been processed.
         </p>
         <p>Status: <strong>{order.status}</strong></p>
+        {cartClearWarning && (
+          <p className="checkout-notice checkout-notice--error" role="alert">{cartClearWarning}</p>
+        )}
       </section>
 
       <section className="checkout-card">

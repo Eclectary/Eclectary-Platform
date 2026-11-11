@@ -53,6 +53,7 @@ function RouterTestControls() {
     <>
       <output data-testid="location-search">{location.search}</output>
       <button type="button" onClick={() => navigate('/shop?search=Other')}>Navigate to another search</button>
+      <button type="button" onClick={() => navigate(-1)}>Go back</button>
     </>
   );
 }
@@ -186,6 +187,23 @@ describe('Shop live marketplace data', () => {
     expect(screen.getByRole('searchbox')).toHaveValue('Other');
     expect(await screen.findByRole('heading', { name: 'Other Product' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'First Product' })).not.toBeInTheDocument();
+  });
+
+  it('resets an unsubmitted search draft when navigating between search URLs and back', async () => {
+    const user = userEvent.setup();
+    renderShop('/shop?search=First');
+    await screen.findByRole('heading', { name: 'First Product' });
+    const search = screen.getByRole('searchbox');
+    await user.type(search, ' draft');
+    expect(search).toHaveValue('First draft');
+
+    await user.click(screen.getByRole('button', { name: 'Navigate to another search' }));
+    expect(search).toHaveValue('Other');
+    expect(await screen.findByRole('heading', { name: 'Other Product' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+    expect(search).toHaveValue('First');
+    expect(await screen.findByRole('heading', { name: 'First Product' })).toBeInTheDocument();
   });
 
   it.each([

@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
@@ -10,6 +10,8 @@ import {
 } from '../services/authApi';
 import { AuthSessionValidationError } from '../services/authErrors';
 import { AUTH_SESSION_UNAUTHORIZED_EVENT } from '../services/authSession';
+import { getCart, mergeGuestCart } from '../services/cartApi';
+import { CartProvider } from './CartContext';
 import { AuthProvider, useAuth } from './AuthContext';
 
 vi.mock('../services/authApi', () => ({
@@ -17,10 +19,23 @@ vi.mock('../services/authApi', () => ({
   login: vi.fn(),
   register: vi.fn(),
 }));
+vi.mock('../services/cartApi', () => ({
+  addCartItem: vi.fn(),
+  clearCart: vi.fn(),
+  getCart: vi.fn(),
+  mergeGuestCart: vi.fn(),
+  removeCartItem: vi.fn(),
+  updateCartItem: vi.fn(),
+}));
+vi.mock('../services/productApi', () => ({
+  getProductById: vi.fn(() => new Promise(() => undefined)),
+}));
 
 const getCurrentUserMock = vi.mocked(getCurrentUser);
 const loginApiMock = vi.mocked(loginApi);
 const registerApiMock = vi.mocked(registerApi);
+const getCartMock = vi.mocked(getCart);
+const mergeGuestCartMock = vi.mocked(mergeGuestCart);
 const currentUser = {
   id: 7,
   email: 'member@example.com',
@@ -64,12 +79,19 @@ function AuthState() {
   );
 }
 
+function AuthWithCart() {
+  return <AuthProvider><CartProvider><AuthState /></CartProvider></AuthProvider>;
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   getCurrentUserMock.mockReset();
   loginApiMock.mockReset();
   registerApiMock.mockReset();
+  getCartMock.mockReset();
+  mergeGuestCartMock.mockReset();
+  getCartMock.mockResolvedValue({ id: 5, items: [] });
 });
 
 afterEach(() => {
@@ -77,6 +99,109 @@ afterEach(() => {
 });
 
 describe('AuthProvider token persistence', () => {
+  it.each([
+    ['login', 'Remembered login'],
+    ['registration', 'Register'],
+  ])('does not hydrate the previous user with a new token during %s', async (operation, button) => {
+    window.localStorage.setItem('token', 'previous-token');
+    let resolveUser!: (user: typeof currentUser) => void;
+    const pendingUser = new Promise<typeof currentUser>((resolve) => {
+      resolveUser = resolve;
+    });
+    const nextUser = { ...currentUser, id: 8, email: 'next@example.com' };
+    getCurrentUserMock.mockResolvedValueOnce(currentUser).mockReturnValueOnce(pendingUser);
+    if (operation === 'login') {
+      loginApiMock.mockResolvedValue({ token: 'new-token' });
+    } else {
+      registerApiMock.mockResolvedValue({ token: 'new-token' });
+    }
+    const user = userEvent.setup();
+
+    render(<AuthWithCart />);
+    expect(await screen.findByText(currentUser.email)).toBeInTheDocument();
+    await waitFor(() => expect(getCartMock).toHaveBeenCalledWith('previous-token'));
+    await user.click(screen.getByRole('button', { name: button }));
+
+    expect(screen.getByText('Signed out')).toBeInTheDocument();
+    expect(screen.getByText('Token present')).toBeInTheDocument();
+    expect(getCartMock).toHaveBeenCalledOnce();
+    expect(mergeGuestCartMock).not.toHaveBeenCalled();
+
+    await act(async () => resolveUser(nextUser));
+    expect(await screen.findByText(nextUser.email)).toBeInTheDocument();
+    await waitFor(() => expect(getCartMock).toHaveBeenCalledWith('new-token'));
+    expect(getCartMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('merges the guest cart after login', async () => {
+    window.localStorage.setItem('eclectary-cart', JSON.stringify([{ productId: 31, quantity: 2 }]));
+    loginApiMock.mockResolvedValue({ token: 'login-token' });
+    getCurrentUserMock.mockResolvedValue(currentUser);
+    mergeGuestCartMock.mockImplementation(async (request) => ({
+      cart: { id: 5, items: [] },
+      merge: {
+        added_items: [{ index: 0, product_id: 31, quantity: 2 }],
+        skipped_items: [],
+        merge_identifier: request.merge_identifier,
+        repeated: false,
+      },
+    }));
+    const user = userEvent.setup();
+
+    render(<AuthWithCart />);
+    await screen.findByText('Signed out');
+    await user.click(screen.getByRole('button', { name: 'Remembered login' }));
+
+    expect(await screen.findByText(currentUser.email)).toBeInTheDocument();
+    await waitFor(() => expect(mergeGuestCartMock).toHaveBeenCalledOnce());
+    expect(window.localStorage.getItem('eclectary-cart')).toBe('[]');
+  });
+
+  it('merges the guest cart after registration', async () => {
+    window.localStorage.setItem('eclectary-cart', JSON.stringify([{ productId: 31, quantity: 1 }]));
+    registerApiMock.mockResolvedValue({ token: 'registration-token' });
+    getCurrentUserMock.mockResolvedValue(currentUser);
+    mergeGuestCartMock.mockImplementation(async (request) => ({
+      cart: { id: 5, items: [] },
+      merge: {
+        added_items: [{ index: 0, product_id: 31, quantity: 1 }],
+        skipped_items: [],
+        merge_identifier: request.merge_identifier,
+        repeated: false,
+      },
+    }));
+    const user = userEvent.setup();
+
+    render(<AuthWithCart />);
+    await screen.findByText('Signed out');
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+
+    expect(await screen.findByText(currentUser.email)).toBeInTheDocument();
+    await waitFor(() => expect(mergeGuestCartMock).toHaveBeenCalledOnce());
+    expect(window.localStorage.getItem('eclectary-cart')).toBe('[]');
+  });
+
+  it('merges pending guest items after restoring an authenticated session', async () => {
+    window.localStorage.setItem('token', 'restored-token');
+    window.localStorage.setItem('eclectary-cart', JSON.stringify([{ productId: 31, quantity: 1 }]));
+    getCurrentUserMock.mockResolvedValue(currentUser);
+    mergeGuestCartMock.mockImplementation(async (request) => ({
+      cart: { id: 5, items: [] },
+      merge: {
+        added_items: [{ index: 0, product_id: 31, quantity: 1 }],
+        skipped_items: [],
+        merge_identifier: request.merge_identifier,
+        repeated: false,
+      },
+    }));
+
+    render(<AuthWithCart />);
+
+    expect(await screen.findByText(currentUser.email)).toBeInTheDocument();
+    await waitFor(() => expect(mergeGuestCartMock).toHaveBeenCalledOnce());
+    expect(window.localStorage.getItem('eclectary-cart')).toBe('[]');
+  });
+
   it('stores a remembered login only in localStorage', async () => {
     loginApiMock.mockResolvedValue({ token: 'remembered-token' });
     getCurrentUserMock.mockResolvedValue(currentUser);

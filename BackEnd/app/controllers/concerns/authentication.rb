@@ -8,7 +8,7 @@ module Authentication
   private
 
   def authenticate_user
-    token = request.headers["Authorization"]&.split(" ")&.last
+    token = request.headers["Authorization"].to_s.match(/\ABearer +(\S+)\z/i)&.captures&.first
     decoded_token = JsonWebToken.decode(token)
 
     if decoded_token

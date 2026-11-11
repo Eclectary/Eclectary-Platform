@@ -3,6 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import api from './api';
 import { AUTH_SESSION_UNAUTHORIZED_EVENT } from './authSession';
+import {
+  addCartItem,
+  clearCart,
+  getCart,
+  mergeGuestCart,
+  removeCartItem,
+  updateCartItem,
+} from './cartApi';
 
 const originalAdapter = api.defaults.adapter;
 const testAdapter: AxiosAdapter = async (config) => ({
@@ -39,10 +47,53 @@ describe('API authorization token lookup', () => {
 
     expect(response.config.headers.Authorization).toBe('Bearer session-token');
   });
+
+  it('preserves an explicit request token when the stored session changes before dispatch', async () => {
+    window.localStorage.setItem('token', 'previous-token');
+    const request = api.get('/cart', {
+      headers: { Authorization: 'Bearer previous-token' },
+    });
+    window.localStorage.setItem('token', 'new-session-token');
+
+    const response = await request;
+
+    expect(response.config.headers.Authorization).toBe('Bearer previous-token');
+  });
+
+  it('binds every cart operation to its initiating token before interceptor dispatch', async () => {
+    const authorizations: string[] = [];
+    api.defaults.adapter = async (config) => {
+      authorizations.push(String(config.headers.Authorization));
+      return {
+        config,
+        data: {
+          data: { id: 1, items: [] },
+          merge: { added_items: [], skipped_items: [], merge_identifier: 'transfer', repeated: false },
+        },
+        headers: new AxiosHeaders(),
+        status: 200,
+        statusText: 'OK',
+      };
+    };
+    window.localStorage.setItem('token', 'previous-token');
+    const requests = [
+      getCart('previous-token'),
+      mergeGuestCart({ merge_identifier: 'transfer', items: [] }, 'previous-token'),
+      addCartItem({ product_id: 1, quantity: 1 }, 'previous-token'),
+      updateCartItem(1, { quantity: 2 }, 'previous-token'),
+      removeCartItem(1, 'previous-token'),
+      clearCart('previous-token'),
+    ];
+    window.localStorage.setItem('token', 'new-session-token');
+
+    await Promise.all(requests);
+
+    expect(authorizations).toEqual(Array(6).fill('Bearer previous-token'));
+  });
 });
 
 describe('unauthorized authenticated sessions', () => {
-  function useUnauthorizedAdapter() {
+  function useUnauthorizedAdapter(beforeReject?: () => void) {
     let rejectedError: AxiosError | undefined;
 
     api.defaults.adapter = async (config) => {
@@ -61,6 +112,7 @@ describe('unauthorized authenticated sessions', () => {
         undefined,
         response,
       );
+      beforeReject?.();
       throw rejectedError;
     };
 
@@ -92,6 +144,39 @@ describe('unauthorized authenticated sessions', () => {
 
     await expect(api.get('/protected-resource')).rejects.toBeInstanceOf(AxiosError);
 
+    expect(notification).not.toHaveBeenCalled();
+    window.removeEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
+  });
+
+  it('does not clear a newer session for an old token response', async () => {
+    window.localStorage.setItem('token', 'previous-token');
+    const notification = vi.fn();
+    window.addEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
+    const getRejectedError = useUnauthorizedAdapter(() => {
+      window.localStorage.setItem('token', 'new-session-token');
+    });
+
+    const receivedError = await api.get('/cart').catch((error) => error);
+
+    expect(receivedError).toBe(getRejectedError());
+    expect(window.localStorage.getItem('token')).toBe('new-session-token');
+    expect(notification).not.toHaveBeenCalled();
+    window.removeEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
+  });
+
+  it('does not clear a newer session when an explicitly bound old request fails', async () => {
+    window.localStorage.setItem('token', 'previous-token');
+    const notification = vi.fn();
+    window.addEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
+    useUnauthorizedAdapter();
+    const request = api.get('/cart', {
+      headers: { Authorization: 'Bearer previous-token' },
+    });
+    window.localStorage.setItem('token', 'new-session-token');
+
+    await expect(request).rejects.toBeInstanceOf(AxiosError);
+
+    expect(window.localStorage.getItem('token')).toBe('new-session-token');
     expect(notification).not.toHaveBeenCalled();
     window.removeEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
   });

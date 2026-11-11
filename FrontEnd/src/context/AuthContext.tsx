@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string, rememberMe: boolean) => {
     const data = await loginApi({ email, password });
 
+    setUser(null);
     storeToken(data.token, rememberMe);
     setToken(data.token);
 
@@ -104,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (data.token) {
+      setUser(null);
       storeToken(data.token, true);
       setToken(data.token);
 
