@@ -330,6 +330,28 @@ describe('authentication-aware cart state', () => {
     expect(JSON.parse(window.localStorage.getItem('eclectary-cart')!)).toEqual([]);
   });
 
+  it.each([
+    [422, { errors: ['Quantity cannot exceed 99 per product.'] }, 'Quantity cannot exceed 99 per product.'],
+    [403, { error: 'You cannot update this cart.' }, 'You cannot update this cart.'],
+    [409, { message: 'Your cart changed. Please reload.' }, 'Your cart changed. Please reload.'],
+    [429, { errors: ['Please wait before updating your cart.'] }, 'Please wait before updating your cart.'],
+    [500, { errors: ['Private details'] }, 'We could not update your saved cart.'],
+  ] as const)('shows safe HTTP %s mutation errors without changing the saved cart', async (status, data, message) => {
+    authenticate();
+    const { result } = renderHook(useCart, { wrapper: CartProvider });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    vi.mocked(removeCartItem).mockRejectedValue({
+      isAxiosError: true, response: { status, data },
+    });
+
+    act(() => result.current.removeItem(2));
+
+    await waitFor(() => expect(result.current.mutationError).toContain(message));
+    expect(result.current.items).toEqual(accountCart.items);
+    expect(result.current.mutationLoading).toBe(false);
+    expect(result.current.mutationError).not.toContain('Private details');
+  });
+
   it('does not start overlapping mutations or apply an old account mutation response', async () => {
     authenticate();
     const pendingMutation = deferredCart();

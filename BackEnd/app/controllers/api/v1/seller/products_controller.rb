@@ -58,7 +58,7 @@ module Api
         end
 
         def product_params
-          @product_params ||= params.require(:product).permit(
+          @product_params ||= require_object_parameter(:product).permit(
             :title,
             :description,
             :price,
@@ -90,7 +90,7 @@ module Api
         end
 
         def render_validation_errors(product)
-          render json: { errors: product.errors.full_messages }, status: :unprocessable_entity
+          render_api_error(product.errors.full_messages, status: :unprocessable_entity)
         end
       end
     end

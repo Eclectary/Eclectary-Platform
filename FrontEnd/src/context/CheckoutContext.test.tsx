@@ -300,6 +300,50 @@ describe('persistent checkout context', () => {
     expect(await screen.findByText('Order #91')).toBeInTheDocument();
   });
 
+  it.each([
+    [422, 'Shipping address cannot be blank.'],
+    [403, 'You cannot place this order.'],
+    [409, 'Idempotency key has already been used with a different order payload.'],
+    [429, 'Too many requests. Please try again later.'],
+  ] as const)('shows HTTP %s rejection details and keeps the cart and retry key', async (status, message) => {
+    vi.mocked(createOrder)
+      .mockRejectedValueOnce({
+        isAxiosError: true, response: { status, data: { errors: [message] } },
+      })
+      .mockResolvedValueOnce(order);
+    render(<Harness showConsumer />);
+    await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit order' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(`${message} Your cart has been kept.`);
+    expect(screen.getByTestId('cart-items')).toHaveTextContent('42');
+    expect(clearServerCart).not.toHaveBeenCalled();
+    const firstKey = vi.mocked(createOrder).mock.calls[0][2];
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss checkout' }));
+    await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit order' }));
+
+    expect(await screen.findByText('Order #91')).toBeInTheDocument();
+    expect(vi.mocked(createOrder).mock.calls[1][2]).toBe(firstKey);
+  });
+
+  it.each([
+    { isAxiosError: true, code: 'ERR_NETWORK' },
+    { isAxiosError: true, code: 'ECONNABORTED' },
+    { isAxiosError: true, response: { status: 500, data: { errors: ['Private server details'] } } },
+  ])('keeps the order-check warning for uncertain outcomes', async (error) => {
+    vi.mocked(createOrder).mockRejectedValue(error);
+    render(<Harness showConsumer />);
+    await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit order' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/check your orders before trying again/i);
+    expect(screen.getByTestId('cart-items')).toHaveTextContent('42');
+    expect(clearServerCart).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Private server details/)).not.toBeInTheDocument();
+  });
+
   it('generates a new idempotency key when the retried payload changes', async () => {
     const changedRequest = { ...request, shipping_city: 'Salem' };
     vi.mocked(createOrder)

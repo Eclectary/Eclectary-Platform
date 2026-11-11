@@ -57,7 +57,7 @@ class Api::V1::SellersControllerTest < ActionDispatch::IntegrationTest
       get "/api/v1/sellers/#{id}"
 
       assert_response :not_found
-      assert_equal({ "error" => "Seller not found" }, response.parsed_body)
+      assert_equal({ "errors" => [ "Seller not found" ] }, response.parsed_body)
     end
   end
 

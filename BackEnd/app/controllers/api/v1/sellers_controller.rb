@@ -15,7 +15,7 @@ module Api
         if seller
           render json: { data: SellerSerializer.new(seller).as_json }
         else
-          render json: { error: "Seller not found" }, status: :not_found
+          render_api_error("Seller not found", status: :not_found)
         end
       end
     end

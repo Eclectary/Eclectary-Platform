@@ -36,7 +36,7 @@ module Api
           if item.transition_fulfillment_to(fulfillment_params[:status])
             render json: { data: SellerOrderItemSerializer.new(item).as_json }
           else
-            render json: { errors: item.errors.full_messages }, status: :unprocessable_entity
+            render_api_error(item.errors.full_messages, status: :unprocessable_entity)
           end
         end
 
@@ -47,7 +47,7 @@ module Api
         end
 
         def fulfillment_params
-          params.require(:fulfillment).permit(:status)
+          require_object_parameter(:fulfillment).permit(:status)
         end
 
       end

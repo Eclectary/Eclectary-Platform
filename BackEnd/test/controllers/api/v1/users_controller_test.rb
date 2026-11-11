@@ -123,7 +123,7 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :too_many_requests
     assert_equal(
-      { "error" => "Too many requests. Please try again later." },
+      { "errors" => [ "Too many requests. Please try again later." ] },
       JSON.parse(response.body)
     )
   end
@@ -290,7 +290,7 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     get "/api/v1/users/me", headers: { "Authorization" => "Bearer #{token}" }
 
     assert_response :unauthorized
-    assert_equal({ "error" => "Unauthorized" }, JSON.parse(response.body))
+    assert_equal({ "errors" => [ "Unauthorized" ] }, JSON.parse(response.body))
   end
 
   test "me with a token for a nonexistent user is unauthorized" do
@@ -298,7 +298,7 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     get "/api/v1/users/me", headers: { "Authorization" => "Bearer #{token}" }
 
     assert_response :unauthorized
-    assert_equal({ "error" => "Unauthorized" }, JSON.parse(response.body))
+    assert_equal({ "errors" => [ "Unauthorized" ] }, JSON.parse(response.body))
   end
 
   test "me with a token with an invalid signature is unauthorized" do
@@ -306,7 +306,7 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     get "/api/v1/users/me", headers: { "Authorization" => "Bearer #{token}" }
 
     assert_response :unauthorized
-    assert_equal({ "error" => "Unauthorized" }, JSON.parse(response.body))
+    assert_equal({ "errors" => [ "Unauthorized" ] }, JSON.parse(response.body))
   end
 
   test "me with a token using an unsupported algorithm is unauthorized" do
@@ -314,7 +314,7 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     get "/api/v1/users/me", headers: { "Authorization" => "Bearer #{token}" }
 
     assert_response :unauthorized
-    assert_equal({ "error" => "Unauthorized" }, JSON.parse(response.body))
+    assert_equal({ "errors" => [ "Unauthorized" ] }, JSON.parse(response.body))
   end
 
   # --- Authorization on /index (administrator only) ---

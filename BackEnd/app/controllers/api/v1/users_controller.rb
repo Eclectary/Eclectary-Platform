@@ -31,9 +31,7 @@ class Api::V1::UsersController < Api::V1::BaseController
         token: JsonWebToken.encode(user_id: user.id)
       ), status: :created
     else
-      render json: {
-        errors: user.errors.full_messages
-      }, status: :unprocessable_entity
+      render_api_error(user.errors.full_messages, status: :unprocessable_entity)
     end
   end
 
@@ -45,7 +43,7 @@ class Api::V1::UsersController < Api::V1::BaseController
     if current_user.update(profile_params)
       render json: UserSerializer.new(current_user).as_json
     else
-      render json: { errors: current_user.errors.full_messages }, status: :unprocessable_entity
+      render_api_error(current_user.errors.full_messages, status: :unprocessable_entity)
     end
   end
 
@@ -53,7 +51,7 @@ class Api::V1::UsersController < Api::V1::BaseController
 
   # Public self-registration must never allow escalation to administrator.
   def user_params
-    permitted = params.require(:user).permit(
+    permitted = require_object_parameter(:user).permit(
       :email,
       :password,
       :password_confirmation,
@@ -68,6 +66,6 @@ class Api::V1::UsersController < Api::V1::BaseController
   end
 
   def profile_params
-    params.require(:user).permit(:public_name, :specialty, :bio, :image_url)
+    require_object_parameter(:user).permit(:public_name, :specialty, :bio, :image_url)
   end
 end

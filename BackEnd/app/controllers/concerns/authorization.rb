@@ -16,6 +16,6 @@ module Authorization
     allowed_roles = roles.map(&:to_s)
     return if current_user && allowed_roles.include?(current_user.role)
 
-    render json: { error: "Forbidden" }, status: :forbidden
+    render_api_error("Forbidden", status: :forbidden)
   end
 end

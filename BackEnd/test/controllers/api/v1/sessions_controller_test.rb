@@ -49,7 +49,7 @@ class Api::V1::SessionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :too_many_requests
     assert_equal(
-      { "error" => "Too many requests. Please try again later." },
+      { "errors" => [ "Too many requests. Please try again later." ] },
       JSON.parse(response.body)
     )
   end
@@ -103,7 +103,7 @@ class Api::V1::SessionsControllerTest < ActionDispatch::IntegrationTest
     post "/api/v1/login", params: { email: users(:one).email, password: "wrong-password" }
 
     assert_response :unauthorized
-    assert_equal "Invalid email or password", JSON.parse(response.body)["error"]
+    assert_equal({ "errors" => [ "Invalid email or password" ] }, JSON.parse(response.body))
   end
 
   test "unknown email returns unauthorized" do

@@ -42,6 +42,36 @@ afterEach(() => {
 });
 
 describe('SellerOrders', () => {
+  it('shows a permission error when loading orders is forbidden', async () => {
+    getSellerOrdersMock.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 403, data: { errors: ['Seller access is required.'] } },
+    });
+    renderPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Seller access is required.');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it.each([
+    [403, 'You cannot update this item.'],
+    [409, 'This item has changed. Please reload.'],
+    [422, 'This fulfillment transition is not allowed.'],
+    [429, 'Too many requests. Please try again later.'],
+  ] as const)('shows HTTP %s mutation errors without changing fulfillment', async (status, message) => {
+    updateFulfillmentMock.mockRejectedValue({
+      isAxiosError: true, response: { status, data: { errors: [message] } },
+    });
+    renderPage();
+    const firstItem = await screen.findByText('First item');
+    const itemSection = firstItem.closest('section')!;
+    fireEvent.click(within(itemSection).getByRole('button', { name: 'Move to Processing' }));
+
+    expect(await within(itemSection).findByRole('alert')).toHaveTextContent(message);
+    expect(within(itemSection).getByText(/Status:/)).toHaveTextContent('unfulfilled');
+    expect(screen.getByText('Finished item').closest('section')).not.toHaveTextContent(message);
+  });
+
   it('keeps the shell visible while loading and renders seller-scoped order fields', async () => {
     let resolve!: (orders: SellerOrder[]) => void;
     getSellerOrdersMock.mockReturnValue(new Promise((done) => { resolve = done; }));

@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { isAxiosError } from 'axios';
 
+import { parseApiError } from '../services/apiErrors';
 import type { Product } from '../types/product';
 import {
   addCartItem,
@@ -110,18 +111,10 @@ function normalizeQuantity(quantity: number): number {
 }
 
 function mutationErrorMessage(error: unknown): string {
-  if (isAxiosError(error)) {
-    const data: unknown = error.response?.data;
-    if (data && typeof data === 'object') {
-      const response = data as { errors?: unknown; error?: unknown };
-      if (Array.isArray(response.errors) && typeof response.errors[0] === 'string') {
-        return response.errors[0];
-      }
-      if (typeof response.error === 'string') return response.error;
-    }
-  }
-
-  return 'We could not update your saved cart. Your cart has not been changed. Please try again.';
+  return parseApiError(
+    error,
+    'We could not update your saved cart. Your cart has not been changed. Please try again.',
+  ).message;
 }
 
 function readProductSnapshot(value: unknown, productId: number): Product | null {

@@ -1,4 +1,4 @@
-import axios from "axios";
+import { parseApiError } from "./apiErrors";
 
 type AuthErrorField = "email" | "form";
 
@@ -7,27 +7,11 @@ export interface AuthDisplayError {
   message: string;
 }
 
-interface RailsAuthErrorResponse {
-  error?: unknown;
-  errors?: unknown;
-}
-
 export class AuthSessionValidationError extends Error {
   constructor(cause?: unknown) {
     super("Authentication session validation failed", { cause });
     this.name = "AuthSessionValidationError";
   }
-}
-
-function getRailsError(error: unknown) {
-  if (!axios.isAxiosError<RailsAuthErrorResponse>(error)) {
-    return null;
-  }
-
-  return {
-    status: error.response?.status,
-    data: error.response?.data,
-  };
 }
 
 export function normalizeLoginError(error: unknown): AuthDisplayError {
@@ -38,10 +22,10 @@ export function normalizeLoginError(error: unknown): AuthDisplayError {
     };
   }
 
-  const railsError = getRailsError(error);
+  const apiError = parseApiError(error, "Unable to sign in right now. Please try again.");
   if (
-    railsError?.status === 401
-    && railsError.data?.error === "Invalid email or password"
+    apiError.status === 401
+    && apiError.messages.includes("Invalid email or password")
   ) {
     return {
       field: "email",
@@ -51,7 +35,7 @@ export function normalizeLoginError(error: unknown): AuthDisplayError {
 
   return {
     field: "form",
-    message: "Unable to sign in right now. Please try again.",
+    message: apiError.message,
   };
 }
 
@@ -63,11 +47,9 @@ export function normalizeRegistrationError(error: unknown): AuthDisplayError {
     };
   }
 
-  const railsError = getRailsError(error);
-  const validationErrors = railsError?.status === 422 && Array.isArray(railsError.data?.errors)
-    ? railsError.data.errors.filter(
-        (message): message is string => typeof message === "string" && message.trim().length > 0,
-      )
+  const apiError = parseApiError(error, "Unable to create your account right now. Please try again.");
+  const validationErrors = apiError.status === 422
+    ? apiError.messages
     : [];
 
   if (validationErrors.some((message) => /email has already been taken/i.test(message))) {
@@ -86,6 +68,6 @@ export function normalizeRegistrationError(error: unknown): AuthDisplayError {
 
   return {
     field: "form",
-    message: "Unable to create your account right now. Please try again.",
+    message: apiError.message,
   };
 }
