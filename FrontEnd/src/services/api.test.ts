@@ -82,6 +82,42 @@ describe('unauthorized authenticated sessions', () => {
     expect(window.localStorage.getItem('token')).toBeNull();
     expect(window.sessionStorage.getItem('token')).toBeNull();
     expect(notification).toHaveBeenCalledOnce();
+    expect((notification.mock.calls[0][0] as CustomEvent).detail).toEqual({
+      token: 'expired-token',
+    });
+    window.removeEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
+  });
+
+  it('does not clear or notify when a 401 belongs to an older JWT', async () => {
+    window.localStorage.setItem('token', 'older-token');
+    const notification = vi.fn();
+    window.addEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
+
+    api.defaults.adapter = async (config) => {
+      window.localStorage.removeItem('token');
+      window.sessionStorage.setItem('token', 'newer-token');
+      const response = {
+        config,
+        data: { error: 'Unauthorized' },
+        headers: new AxiosHeaders(),
+        status: 401,
+        statusText: 'Unauthorized',
+      };
+
+      throw new AxiosError(
+        'Request failed with status code 401',
+        AxiosError.ERR_BAD_REQUEST,
+        config,
+        undefined,
+        response,
+      );
+    };
+
+    await expect(api.get('/protected-resource')).rejects.toBeInstanceOf(AxiosError);
+
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('newer-token');
+    expect(notification).not.toHaveBeenCalled();
     window.removeEventListener(AUTH_SESSION_UNAUTHORIZED_EVENT, notification);
   });
 

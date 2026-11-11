@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
@@ -9,7 +9,9 @@ import {
   register as registerApi,
 } from '../services/authApi';
 import { AuthSessionValidationError } from '../services/authErrors';
-import { AUTH_SESSION_UNAUTHORIZED_EVENT } from '../services/authSession';
+import {
+  notifyUnauthorizedAuthSession,
+} from '../services/authSession';
 import { AuthProvider, useAuth } from './AuthContext';
 
 vi.mock('../services/authApi', () => ({
@@ -26,6 +28,22 @@ const currentUser = {
   email: 'member@example.com',
   role: 'customer' as const,
 };
+const newerUser = {
+  id: 8,
+  email: 'newer@example.com',
+  role: 'customer' as const,
+};
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}
 
 function AuthState() {
   const { user, token, loading, login, register, logout } = useAuth();
@@ -60,6 +78,32 @@ function AuthState() {
         Register
       </button>
       <button type="button" onClick={logout}>Log out</button>
+    </>
+  );
+}
+
+function AuthRaceState() {
+  const { user, token, loading, login, register, logout } = useAuth();
+
+  const runAuthOperation = (operation: () => Promise<void>) => {
+    void operation().catch(() => undefined);
+  };
+
+  return (
+    <>
+      <p>{loading ? 'Loading' : 'Loaded'}</p>
+      <p>{user?.email ?? 'Signed out'}</p>
+      <p>{token ?? 'No token'}</p>
+      <button type="button" onClick={() => runAuthOperation(() => login('older@example.com', 'password123', true))}>
+        Older login
+      </button>
+      <button type="button" onClick={() => runAuthOperation(() => login('newer@example.com', 'password123', false))}>
+        Newer login
+      </button>
+      <button type="button" onClick={() => runAuthOperation(() => register('newer@example.com', 'password123', 'password123'))}>
+        Replacement registration
+      </button>
+      <button type="button" onClick={logout}>Race logout</button>
     </>
   );
 }
@@ -236,12 +280,189 @@ describe('AuthProvider token persistence', () => {
     expect(await screen.findByText(currentUser.email)).toBeInTheDocument();
 
     act(() => {
-      window.dispatchEvent(new Event(AUTH_SESSION_UNAUTHORIZED_EVENT));
+      notifyUnauthorizedAuthSession('expired-token');
     });
 
     expect(screen.getByText('Signed out')).toBeInTheDocument();
     expect(screen.getByText('No token')).toBeInTheDocument();
     expect(window.localStorage.getItem('token')).toBeNull();
     expect(window.sessionStorage.getItem('token')).toBeNull();
+  });
+});
+
+describe('AuthProvider session generation guards', () => {
+  it('keeps the newer login when an overlapping older login response finishes last', async () => {
+    const olderLogin = createDeferred<{ token: string }>();
+    const newerLogin = createDeferred<{ token: string }>();
+    loginApiMock
+      .mockReturnValueOnce(olderLogin.promise)
+      .mockReturnValueOnce(newerLogin.promise);
+    getCurrentUserMock.mockResolvedValue(newerUser);
+    const user = userEvent.setup();
+
+    render(<AuthProvider><AuthRaceState /></AuthProvider>);
+    await screen.findByText('Loaded');
+    await user.click(screen.getByRole('button', { name: 'Older login' }));
+    await user.click(screen.getByRole('button', { name: 'Newer login' }));
+
+    await act(async () => {
+      newerLogin.resolve({ token: 'newer-session-token' });
+      await newerLogin.promise;
+    });
+
+    expect(await screen.findByText(newerUser.email)).toBeInTheDocument();
+    expect(screen.getByText('newer-session-token')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('newer-session-token');
+
+    await act(async () => {
+      olderLogin.resolve({ token: 'older-remembered-token' });
+      await olderLogin.promise;
+    });
+
+    expect(screen.getByText(newerUser.email)).toBeInTheDocument();
+    expect(screen.getByText('newer-session-token')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('newer-session-token');
+    expect(getCurrentUserMock).toHaveBeenCalledOnce();
+  });
+
+  it('does not restore a user or token after logout while restoration is pending', async () => {
+    const restoration = createDeferred<typeof currentUser>();
+    window.localStorage.setItem('token', 'restoration-token');
+    getCurrentUserMock.mockReturnValue(restoration.promise);
+    const user = userEvent.setup();
+
+    render(<AuthProvider><AuthRaceState /></AuthProvider>);
+    expect(screen.getByText('Loading')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Race logout' }));
+
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBeNull();
+
+    await act(async () => {
+      restoration.resolve(currentUser);
+      await restoration.promise;
+    });
+
+    expect(await screen.findByText('Loaded')).toBeInTheDocument();
+    expect(screen.getByText('Signed out')).toBeInTheDocument();
+    expect(screen.getByText('No token')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBeNull();
+  });
+
+  it('does not finish a login after logout while its user validation is pending', async () => {
+    const validation = createDeferred<typeof currentUser>();
+    loginApiMock.mockResolvedValue({ token: 'pending-login-token' });
+    getCurrentUserMock.mockReturnValue(validation.promise);
+    const user = userEvent.setup();
+
+    render(<AuthProvider><AuthRaceState /></AuthProvider>);
+    await screen.findByText('Loaded');
+    await user.click(screen.getByRole('button', { name: 'Older login' }));
+    await waitFor(() => expect(window.localStorage.getItem('token')).toBe('pending-login-token'));
+    await user.click(screen.getByRole('button', { name: 'Race logout' }));
+
+    await act(async () => {
+      validation.resolve(currentUser);
+      await validation.promise;
+    });
+
+    expect(screen.getByText('Signed out')).toBeInTheDocument();
+    expect(screen.getByText('No token')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBeNull();
+  });
+
+  it('keeps a new login when an older session restoration finishes afterward', async () => {
+    const restoration = createDeferred<typeof currentUser>();
+    window.localStorage.setItem('token', 'restoration-token');
+    loginApiMock.mockResolvedValue({ token: 'replacement-session-token' });
+    getCurrentUserMock
+      .mockReturnValueOnce(restoration.promise)
+      .mockResolvedValueOnce(newerUser);
+    const user = userEvent.setup();
+
+    render(<AuthProvider><AuthRaceState /></AuthProvider>);
+    expect(screen.getByText('Loading')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Newer login' }));
+
+    expect(await screen.findByText(newerUser.email)).toBeInTheDocument();
+    expect(screen.getByText('replacement-session-token')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('replacement-session-token');
+
+    await act(async () => {
+      restoration.resolve(currentUser);
+      await restoration.promise;
+    });
+
+    expect(await screen.findByText('Loaded')).toBeInTheDocument();
+    expect(screen.getByText(newerUser.email)).toBeInTheDocument();
+    expect(screen.queryByText(currentUser.email)).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('replacement-session-token');
+  });
+
+  it('keeps a newer login when stale validation fails and clears its superseded JWT', async () => {
+    const staleValidation = createDeferred<typeof currentUser>();
+    const newerLogin = createDeferred<{ token: string }>();
+    loginApiMock
+      .mockResolvedValueOnce({ token: 'stale-remembered-token' })
+      .mockReturnValueOnce(newerLogin.promise);
+    getCurrentUserMock
+      .mockReturnValueOnce(staleValidation.promise)
+      .mockResolvedValueOnce(newerUser);
+    const user = userEvent.setup();
+
+    render(<AuthProvider><AuthRaceState /></AuthProvider>);
+    await screen.findByText('Loaded');
+    await user.click(screen.getByRole('button', { name: 'Older login' }));
+    await waitFor(() => expect(window.localStorage.getItem('token')).toBe('stale-remembered-token'));
+
+    await user.click(screen.getByRole('button', { name: 'Newer login' }));
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBeNull();
+    expect(screen.getByText('No token')).toBeInTheDocument();
+
+    await act(async () => {
+      newerLogin.resolve({ token: 'newer-session-token' });
+      await newerLogin.promise;
+    });
+
+    expect(await screen.findByText(newerUser.email)).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('newer-session-token');
+
+    await act(async () => {
+      staleValidation.reject(new Error('Stale current-user validation failed'));
+      await staleValidation.promise.catch(() => undefined);
+    });
+
+    expect(screen.getByText(newerUser.email)).toBeInTheDocument();
+    expect(screen.getByText('newer-session-token')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('newer-session-token');
+  });
+
+  it('ignores an unauthorized-session event from an older request after a newer login succeeds', async () => {
+    loginApiMock.mockResolvedValue({ token: 'newer-session-token' });
+    getCurrentUserMock.mockResolvedValue(newerUser);
+    const user = userEvent.setup();
+
+    render(<AuthProvider><AuthRaceState /></AuthProvider>);
+    await screen.findByText('Loaded');
+    await user.click(screen.getByRole('button', { name: 'Newer login' }));
+    expect(await screen.findByText(newerUser.email)).toBeInTheDocument();
+
+    act(() => {
+      notifyUnauthorizedAuthSession('older-token');
+    });
+
+    expect(screen.getByText(newerUser.email)).toBeInTheDocument();
+    expect(screen.getByText('newer-session-token')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBeNull();
+    expect(window.sessionStorage.getItem('token')).toBe('newer-session-token');
   });
 });

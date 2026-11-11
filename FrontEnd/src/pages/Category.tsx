@@ -12,6 +12,8 @@ import '../styles/category-detail.css';
 
 type CategorySort = 'newest' | 'price-asc' | 'price-desc';
 
+const EMPTY_PRODUCTS: Product[] = [];
+
 const SORT_OPTIONS: Array<{ id: CategorySort; label: string }> = [
   { id: 'newest', label: 'Newest' },
   { id: 'price-asc', label: 'Price: Low \u2192 High' },
@@ -42,7 +44,7 @@ function Category() {
     productsResult?.categoryId !== categoryId
     || productsResult?.subcategory !== activeSubcategory
   ));
-  const categoryProducts = !isLoading && productsResult ? productsResult.products : [];
+  const categoryProducts = !isLoading && productsResult ? productsResult.products : EMPTY_PRODUCTS;
   const productsError = !isLoading && (categoryLookupError || productsResult?.error);
   const sortedProducts = useMemo(() => {
     const products = [...categoryProducts];

@@ -1,5 +1,49 @@
 # README
 
+## Guest cart merge API
+
+After login or registration, call `POST /api/v1/cart/merge` with the returned
+JWT in the `Authorization: Bearer <token>` header. This is a separate operation;
+login and registration do not merge carts automatically.
+
+```json
+{
+  "merge_identifier": "a-client-generated-unique-id",
+  "items": [
+    { "product_id": 42, "quantity": 2 }
+  ]
+}
+```
+
+Identifiers must be nonblank strings of at most 128 characters. Use one stable
+identifier for retries of the same guest cart transfer and a new identifier for
+each new transfer. They are scoped to the authenticated user's cart. Ownership
+fields are ignored.
+
+The response is HTTP 200 with `data` from the existing cart serializer and
+`merge` containing `merge_identifier`, `repeated`, `added_items`, and
+`skipped_items`. Item reports use zero-based input `index` and `product_id`;
+`added_items` includes the quantity added. Invalid entries are skipped with
+`invalid_item` or `invalid_product_id_or_quantity`; deleted/inactive products
+use `unavailable_product`. Duplicate products accumulate into one cart item.
+Quantities are capped at 99; excess is reported as `quantity_limit` with
+`skipped_quantity`. Integer quantities and canonical positive integer strings
+are accepted; fractional, zero, negative, and missing quantities are skipped.
+
+Merge identifiers and item reports are persisted atomically with cart changes.
+Repeating an identifier never applies items again, even if the payload differs
+or the cart has since been cleared. It returns the original item reports with
+`repeated: true` and the current cart. Retain the client identifier until the
+response is received; sending a new identifier after a timeout can double-add.
+Merge records remain until their cart is destroyed.
+
+Missing/invalid identifiers or a non-array `items` value return HTTP 422 with
+`errors`; missing/invalid authentication uses the existing HTTP 401 response.
+An empty array is allowed and records a completed merge.
+
+Apply the new `20261110140000_create_cart_merges.rb` migration before using this
+endpoint. It creates retry tracking records without altering existing carts.
+
 ## Public sellers API
 
 Run `bundle exec ruby bin/rails db:migrate` before starting the API.

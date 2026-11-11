@@ -16,7 +16,7 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getStoredToken();
 
-  if (token) {
+  if (token && !config.headers.has("Authorization")) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -32,20 +32,28 @@ function isAuthenticationAttempt(method?: string, url?: string) {
   return path === "/login" || path === "/users";
 }
 
+function getBearerToken(authorization: unknown) {
+  if (typeof authorization !== "string") return null;
+
+  const match = authorization.match(/^Bearer (.+)$/i);
+  return match?.[1] ?? null;
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const request = axios.isAxiosError(error) ? error.config : undefined;
     const authorization = request?.headers?.Authorization;
+    const requestToken = getBearerToken(authorization);
 
     if (
       error.response?.status === 401
-      && authorization
+      && requestToken
       && !isAuthenticationAttempt(request?.method, request?.url)
-      && getStoredToken()
+      && getStoredToken() === requestToken
     ) {
       clearStoredToken();
-      notifyUnauthorizedAuthSession();
+      notifyUnauthorizedAuthSession(requestToken);
     }
 
     return Promise.reject(error);

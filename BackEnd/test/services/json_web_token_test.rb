@@ -18,6 +18,18 @@ class JsonWebTokenTest < ActiveSupport::TestCase
     assert_nil JsonWebToken.decode("not-a-real-token")
   end
 
+  test "decode returns nil for a token with an invalid signature" do
+    token = JWT.encode({ user_id: 42 }, "incorrect-signing-key", "HS256")
+
+    assert_nil JsonWebToken.decode(token)
+  end
+
+  test "decode returns nil for a token using an unsupported algorithm" do
+    token = JWT.encode({ user_id: 42 }, JsonWebToken::SECRET_KEY, "HS384")
+
+    assert_nil JsonWebToken.decode(token)
+  end
+
   test "decode returns nil for a nil token" do
     assert_nil JsonWebToken.decode(nil)
   end

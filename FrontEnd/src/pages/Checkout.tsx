@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 
 import ProductImage from '../components/ProductImage';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { createOrder } from '../services/orderApi';
+import { useCheckout } from '../context/CheckoutContext';
 import '../styles/checkout.css';
 
 type CustomerInfo = {
@@ -23,12 +23,12 @@ type CustomerErrors = Partial<Record<keyof CustomerInfo, string>>;
 const SHIPPING_ESTIMATE = 6.5;
 
 function Checkout() {
-  const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { items, subtotal, clearCart } = useCart();
-  const [customer, setCustomer] = useState<CustomerInfo>({
+  const { user, token, loading: authLoading } = useAuth();
+  const { items, subtotal } = useCart();
+  const { state: checkoutState, submit, dismiss } = useCheckout();
+  const [customerFields, setCustomer] = useState<Omit<CustomerInfo, 'email'> & { email: string | null }>({
     fullName: '',
-    email: user?.email ?? '',
+    email: null,
     phone: '',
     address: '',
     city: '',
@@ -37,13 +37,11 @@ function Checkout() {
   });
   const [errors, setErrors] = useState<CustomerErrors>({});
   const [submissionError, setSubmissionError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (user?.email) {
-      setCustomer((current) => current.email ? current : { ...current, email: user.email });
-    }
-  }, [user?.email]);
+  const customer: CustomerInfo = {
+    ...customerFields,
+    email: customerFields.email ?? user?.email ?? '',
+  };
 
   const availableItems = items.filter(
     (item): item is typeof item & { product: NonNullable<typeof item.product> } =>
@@ -54,7 +52,11 @@ function Checkout() {
   const shipping = availableItems.length > 0 ? SHIPPING_ESTIMATE : 0;
   const total = subtotal + shipping;
 
-  if (items.length === 0) {
+  if (checkoutState.status === 'success') {
+    return <Navigate to="/order" replace state={{ orderId: checkoutState.order.id }} />;
+  }
+
+  if (items.length === 0 && checkoutState.status === 'idle') {
     return (
       <section className="checkout-page checkout-page--empty">
         <h1>Your checkout is empty.</h1>
@@ -69,10 +71,10 @@ function Checkout() {
     setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (submitting) return;
+    if (checkoutState.status !== 'idle') return;
 
     const nextErrors: CustomerErrors = {};
     const requiredFields: Array<keyof CustomerInfo> = [
@@ -97,7 +99,7 @@ function Checkout() {
     setSubmissionError('');
 
     if (Object.keys(nextErrors).length > 0) return;
-    if (authLoading || !user) {
+    if (authLoading || !user || !token) {
       setSubmissionError('Your session is not ready. Please sign in again before submitting.');
       return;
     }
@@ -110,29 +112,20 @@ function Checkout() {
       return;
     }
 
-    setSubmitting(true);
-    try {
-      const order = await createOrder({
-        customer_name: customer.fullName.trim(),
-        customer_email: customer.email.trim(),
-        customer_phone: customer.phone.trim(),
-        shipping_address: customer.address.trim(),
-        shipping_city: customer.city.trim(),
-        shipping_state: customer.state.trim().toUpperCase(),
-        shipping_postal_code: customer.postalCode.trim(),
-        items: availableItems.map((item) => ({
-          product_id: item.productId,
-          quantity: item.quantity,
-        })),
-      });
-
-      clearCart();
-      navigate('/order', { state: { order } });
-    } catch {
-      setSubmissionError('We could not create your order. Your cart has been kept so you can try again.');
-    } finally {
-      setSubmitting(false);
-    }
+    const started = submit({
+      customer_name: customer.fullName.trim(),
+      customer_email: customer.email.trim(),
+      customer_phone: customer.phone.trim(),
+      shipping_address: customer.address.trim(),
+      shipping_city: customer.city.trim(),
+      shipping_state: customer.state.trim().toUpperCase(),
+      shipping_postal_code: customer.postalCode.trim(),
+      items: availableItems.map((item) => ({
+        product_id: item.productId,
+        quantity: item.quantity,
+      })),
+    });
+    if (!started) setSubmissionError('Checkout could not start. Please check its status before trying again.');
   };
 
   return (
@@ -207,11 +200,23 @@ function Checkout() {
 
           {hasPendingItems && <p className="checkout-notice" role="status">Checking current product details before checkout…</p>}
           {hasUnavailableItems && <p className="checkout-notice checkout-notice--error">Remove unavailable products in your cart before checking out.</p>}
-          {submissionError && <p className="checkout-notice checkout-notice--error" role="alert">{submissionError}</p>}
+          {checkoutState.status === 'pending' && (
+            <p className="checkout-notice" role="status">
+              {checkoutState.order ? 'Order created. Clearing your cart…' : 'Creating your order…'}
+            </p>
+          )}
+          {checkoutState.status === 'error' ? (
+            <div className="checkout-notice checkout-notice--error" role="alert">
+              <p>{checkoutState.error}</p>
+              <button type="button" onClick={() => { dismiss(); setSubmissionError(''); }}>
+                Dismiss and return to checkout
+              </button>
+            </div>
+          ) : submissionError && <p className="checkout-notice checkout-notice--error" role="alert">{submissionError}</p>}
 
           <button className="checkout-submit" type="submit"
-            disabled={submitting || authLoading || !user || hasPendingItems || hasUnavailableItems || availableItems.length === 0}>
-            {submitting ? 'Creating order…' : 'Create pending order'}
+            disabled={checkoutState.status !== 'idle' || authLoading || !user || !token || hasPendingItems || hasUnavailableItems || availableItems.length === 0}>
+            {checkoutState.status === 'pending' ? 'Creating order…' : 'Create pending order'}
           </button>
           <p className="checkout-back-link"><Link to="/cart">Back to cart</Link></p>
         </form>

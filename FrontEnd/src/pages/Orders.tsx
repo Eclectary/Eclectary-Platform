@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getOrders } from '../services/orderApi';
 import type { Order } from '../types/order';
@@ -26,27 +26,33 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getOrders();
-      const sorted = [...data].sort((a, b) => {
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return dateB - dateA;
+  const fetchOrders = useCallback(() => {
+    void getOrders()
+      .then((data) => {
+        const sorted = [...data].sort((a, b) => {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          return dateB - dateA;
+        });
+        setOrders(sorted);
+      })
+      .catch(() => {
+        setError('We could not load your orders. Please try again.');
+      })
+      .finally(() => {
+        setLoading(false);
       });
-      setOrders(sorted);
-    } catch (err) {
-      setError('We could not load your orders. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    void fetchOrders();
+  }, [fetchOrders]);
+
+  const retryOrders = () => {
+    setLoading(true);
+    setError(null);
+    void fetchOrders();
+  };
 
   if (loading) {
     return (
@@ -70,7 +76,7 @@ export default function Orders() {
           </header>
           <div className="orders-state orders-state--error">
             <p>{error}</p>
-            <button type="button" className="orders-button" onClick={fetchOrders}>
+            <button type="button" className="orders-button" onClick={retryOrders}>
               Retry
             </button>
           </div>

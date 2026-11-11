@@ -26,6 +26,20 @@ bin/rails db:prepare
 bin/rails server -p 3001
 ```
 
+## Cart integration
+
+Guest carts stay in the browser's `eclectary-cart` localStorage entry. Once a
+session is authenticated, the frontend loads that account's saved cart from the
+Rails API without merging or overwriting the separate guest cart. Signing out
+restores the guest cart.
+
+`AuthProvider` must wrap `CartProvider`. The cart context exposes `loading`,
+`error`, and `canModifyCart` alongside its existing item and action helpers.
+
+Saved account carts are currently read-only: signed-in add, quantity, remove, and
+clear operations are blocked until server mutations are connected. Checkout is
+unchanged, so creating an order does not yet clear the saved account cart.
+
 ## Run Feedlog
 
 Feedlog has its own setup and environment. Run these commands from `FeedLog/`:

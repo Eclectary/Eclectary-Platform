@@ -40,12 +40,11 @@ function Profile() {
           return dateB - dateA;
         });
         setRecentOrders(sorted.slice(0, 3));
-      } catch (err) {
+      } catch {
         if (!isMounted) return;
         setRecentOrders([]);
       } finally {
-        if (!isMounted) return;
-        setOrdersLoading(false);
+        if (isMounted) setOrdersLoading(false);
       }
     };
 

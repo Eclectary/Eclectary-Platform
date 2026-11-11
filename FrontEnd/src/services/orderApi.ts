@@ -51,8 +51,10 @@ function normalizeSellerOrder(order: SellerOrderApiResponse): SellerOrder {
   };
 }
 
-export async function createOrder(order: CreateOrderRequest): Promise<Order> {
-  const response = await api.post<{ data: OrderApiResponse }>('/orders', { order });
+export async function createOrder(order: CreateOrderRequest, token: string): Promise<Order> {
+  const response = await api.post<{ data: OrderApiResponse }>('/orders', { order }, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const createdOrder = response.data.data;
 
   return normalizeOrder(createdOrder);

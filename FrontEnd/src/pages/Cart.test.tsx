@@ -5,6 +5,7 @@ import { AxiosError, AxiosHeaders } from 'axios';
 import userEvent from '@testing-library/user-event';
 
 import Cart from './Cart';
+import { AuthProvider } from '../context/AuthContext';
 import { CartProvider, useCart } from '../context/CartContext';
 import { getProductById } from '../services/productApi';
 import type { Product } from '../types';
@@ -35,9 +36,11 @@ function keepRevalidationPending() {
 function renderCart() {
   return render(
     <BrowserRouter>
-      <CartProvider>
-        <Cart />
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <Cart />
+        </CartProvider>
+      </AuthProvider>
     </BrowserRouter>,
   );
 }
@@ -63,9 +66,11 @@ function CartWithAddControls() {
 function renderCartWithAddControls() {
   return render(
     <BrowserRouter>
-      <CartProvider>
-        <CartWithAddControls />
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <CartWithAddControls />
+        </CartProvider>
+      </AuthProvider>
     </BrowserRouter>,
   );
 }

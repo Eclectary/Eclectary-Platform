@@ -4,7 +4,7 @@ import { isAxiosError } from 'axios';
 
 import ProductCard from '../components/ProductCard';
 import ProductImage from '../components/ProductImage';
-import { getStarSegments } from '../components/StarRating';
+import { getStarSegments } from '../utils/starRating';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { getPublicSellerById, getSellers } from '../services/sellerApi';
@@ -76,7 +76,7 @@ function ProductDetailContent({ product, relatedProducts, relatedError }: {
   relatedProducts: Product[];
   relatedError: boolean;
 }) {
-  const { addToCart, isInCart } = useCart();
+  const { addToCart, isInCart, canModifyCart, mutationLoading, mutationError } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const [publicSeller, setPublicSeller] = useState<Seller | null>(null);
   const [sellerError, setSellerError] = useState(false);
@@ -183,16 +183,17 @@ function ProductDetailContent({ product, relatedProducts, relatedError }: {
               <div className="product-detail__quantity-control" role="group" aria-labelledby="quantity-label">
                 <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} aria-label="Decrease quantity">−</button>
                 <output aria-live="polite">{quantity}</output>
-                <button type="button" onClick={() => setQuantity((current) => current + 1)} aria-label="Increase quantity">+</button>
+                <button type="button" disabled={quantity >= 99} onClick={() => setQuantity((current) => Math.min(99, current + 1))} aria-label="Increase quantity">+</button>
               </div>
             </div>
             <button type="button" className="product-detail__secondary" onClick={handleToggleWishlist}>
               {isWishlisted(product.id) ? '♥ Saved to wishlist' : '♡ Save for later'}
             </button>
-            <button type="button" className="product-detail__button" onClick={handleAddToCart}>
-              {isInCart(product.id) ? 'Add another' : 'Add to cart'}
+            <button type="button" className="product-detail__button" disabled={!canModifyCart || mutationLoading} onClick={handleAddToCart}>
+              {mutationLoading ? 'Saving...' : isInCart(product.id) ? 'Add another' : 'Add to cart'}
             </button>
           </div>
+          {mutationError && <p role="alert">{mutationError}</p>}
 
           <div className="product-detail__purchase-shipping">
             <span>Ships in 3–5 days</span>

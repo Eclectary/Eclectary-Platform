@@ -15,6 +15,12 @@ Rails.application.routes.draw do
       get "health", to: "base#health"
       resources :users, only: %i[create index]
       get "users/me", to: "users#me"
+      get "cart", to: "carts#show"
+      post "cart/merge", to: "cart_merges#create"
+      post "cart/items", to: "cart_items#create"
+      patch "cart/items/:id", to: "cart_items#update"
+      delete "cart/items/:id", to: "cart_items#destroy"
+      delete "cart/items", to: "cart_items#clear"
       resources :products, only: %i[index show]
       namespace :seller do
         resources :products, only: %i[index show create update] do

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import Button from "../components/Button";
 import heroImage from "../assets/images/herobanner2.png";
@@ -15,8 +15,39 @@ type LoginErrors = {
   form?: string;
 };
 
+function getPostLoginDestination(state: unknown): string {
+  if (!state || typeof state !== "object") return "/";
+
+  const from = Reflect.get(state, "from");
+  if (!from || typeof from !== "object") return "/";
+
+  const pathname = Reflect.get(from, "pathname");
+  const search = Reflect.get(from, "search");
+  const hash = Reflect.get(from, "hash");
+
+  if (
+    typeof pathname !== "string"
+    || !pathname.startsWith("/")
+    || pathname.startsWith("//")
+  ) {
+    return "/";
+  }
+
+  const destination = `${pathname}${typeof search === "string" ? search : ""}${typeof hash === "string" ? hash : ""}`;
+
+  try {
+    const url = new URL(destination, window.location.origin);
+    if (url.origin !== window.location.origin) return "/";
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/";
+  }
+}
+
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -48,7 +79,7 @@ function Login() {
 
   try {
     await login(normalizedEmail, password, rememberMe);
-    navigate("/");
+    navigate(getPostLoginDestination(location.state), { replace: true });
   } catch (error) {
     const authError = normalizeLoginError(error);
     setErrors({ [authError.field]: authError.message });

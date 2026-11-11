@@ -1,9 +1,20 @@
 class Api::V1::UsersController < Api::V1::BaseController
+  REGISTRATION_RATE_LIMIT = 5
+  REGISTRATION_RATE_LIMIT_WINDOW = 1.hour
+
   include Authentication
   include Authorization
 
-  before_action :authenticate_user, only: %i[me index]
+  skip_before_action :authenticate_user, only: :create
   require_role :administrator, only: [ :index ]
+
+  rate_limit to: REGISTRATION_RATE_LIMIT,
+    within: REGISTRATION_RATE_LIMIT_WINDOW,
+    by: :authentication_rate_limit_key,
+    with: :render_authentication_rate_limit,
+    store: AUTHENTICATION_RATE_LIMIT_STORE,
+    name: "registration",
+    only: :create
 
   def index
     render json: {
