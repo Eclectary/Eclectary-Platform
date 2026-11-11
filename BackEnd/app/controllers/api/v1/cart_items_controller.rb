@@ -27,8 +27,6 @@ module Api
         render_cart(cart, status: created ? :created : :ok)
       rescue InvalidCartItem, ActiveRecord::RecordInvalid => e
         render_errors(e)
-      rescue ActionController::ParameterMissing => e
-        render json: { errors: [ e.message ] }, status: :bad_request
       end
 
       def update
@@ -44,9 +42,7 @@ module Api
       rescue InvalidCartItem, ActiveRecord::RecordInvalid => e
         render_errors(e)
       rescue ActiveRecord::RecordNotFound
-        render json: { errors: [ "Cart item not found." ] }, status: :not_found
-      rescue ActionController::ParameterMissing => e
-        render json: { errors: [ e.message ] }, status: :bad_request
+        render_api_error("Cart item not found.", status: :not_found)
       end
 
       def destroy
@@ -57,7 +53,7 @@ module Api
 
         render_cart(cart)
       rescue ActiveRecord::RecordNotFound
-        render json: { errors: [ "Cart item not found." ] }, status: :not_found
+        render_api_error("Cart item not found.", status: :not_found)
       end
 
       def clear
@@ -72,7 +68,7 @@ module Api
       private
 
       def item_params
-        params.require(:item).permit(:product_id, :quantity)
+        require_object_parameter(:item).permit(:product_id, :quantity)
       end
 
       def with_locked_cart
@@ -110,7 +106,7 @@ module Api
         else
           [ error.message ]
         end
-        render json: { errors: errors }, status: :unprocessable_entity
+        render_api_error(errors, status: :unprocessable_entity)
       end
     end
   end

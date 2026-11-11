@@ -137,9 +137,12 @@ describe('Login persistence choice', () => {
     });
   });
 
-  it('shows invalid credentials for the Rails login 401', async () => {
+  it.each([
+    { errors: ['Invalid email or password'] },
+    { error: 'Invalid email or password' },
+  ])('shows invalid credentials for the Rails login 401', async (body) => {
     const login = vi.fn().mockRejectedValue(
-      railsError(401, { error: 'Invalid email or password' }),
+      railsError(401, body),
     );
     useAuthMock.mockReturnValue({
       user: null,
@@ -157,6 +160,22 @@ describe('Login persistence choice', () => {
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(await screen.findByText('Invalid email or password.')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/account/login');
+  });
+
+  it('shows the server throttling message without navigating', async () => {
+    useAuthMock.mockReturnValue({
+      user: null, token: null, loading: false,
+      login: vi.fn().mockRejectedValue(railsError(429, { errors: ['Too many requests. Please try again later.'] })),
+      register: vi.fn(), logout: vi.fn(),
+    });
+    const user = userEvent.setup();
+    renderLogin();
+    await user.type(screen.getByLabelText('Email address'), 'member@example.com');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many requests. Please try again later.');
     expect(screen.getByTestId('location')).toHaveTextContent('/account/login');
   });
 

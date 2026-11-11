@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { parseApiError } from '../services/apiErrors';
 import { getSellerOrders, updateSellerItemFulfillment } from '../services/orderApi';
 import type { FulfillmentStatus, SellerOrder } from '../types/order';
 import '../styles/seller-orders.css';
@@ -39,8 +40,8 @@ export default function SellerOrders() {
     setError(null);
     try {
       setOrders(await getSellerOrders());
-    } catch {
-      setError('We could not load your seller orders. Please try again.');
+    } catch (error) {
+      setError(parseApiError(error, 'We could not load your seller orders. Please try again.').message);
     } finally {
       setLoading(false);
     }
@@ -53,8 +54,8 @@ export default function SellerOrders() {
       .then((data) => {
         if (active) setOrders(data);
       })
-      .catch(() => {
-        if (active) setError('We could not load your seller orders. Please try again.');
+      .catch((error: unknown) => {
+        if (active) setError(parseApiError(error, 'We could not load your seller orders. Please try again.').message);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -78,10 +79,10 @@ export default function SellerOrders() {
           ? { ...order, items: order.items.map((item) => item.id === itemId ? updatedItem : item) }
           : order
       )));
-    } catch {
+    } catch (error) {
       setItemErrors((current) => ({
         ...current,
-        [itemId]: 'We could not update this item. Please try again.',
+        [itemId]: parseApiError(error, 'We could not update this item. Please try again.').message,
       }));
     } finally {
       setPendingItems((current) => ({ ...current, [itemId]: false }));

@@ -15,7 +15,7 @@ module Authentication
       @current_user = User.find_by(id: decoded_token["user_id"])
     end
 
-    render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
+    render_api_error("Unauthorized", status: :unauthorized) unless @current_user
   end
 
   def current_user

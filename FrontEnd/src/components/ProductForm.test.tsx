@@ -23,6 +23,43 @@ afterEach(() => {
 });
 
 describe('ProductForm', () => {
+  it.each([
+    [422, "Title can't be blank."],
+    [403, 'You cannot edit this product.'],
+    [409, 'This product has changed. Please reload.'],
+    [429, 'Too many requests. Please try again later.'],
+  ] as const)('shows a safe server message for HTTP %s and preserves entered values', async (status, message) => {
+    const onSubmit = vi.fn().mockRejectedValue({
+      isAxiosError: true, response: { status, data: { errors: [message] } },
+    });
+    render(<ProductForm submitLabel="Create Product" onSubmit={onSubmit} />);
+    await screen.findByRole('option', { name: 'Ceramics' });
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Clay bowl' } });
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '24.95' } });
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByLabelText('Title')).toHaveValue('Clay bowl');
+  });
+
+  it('does not expose server exception details on save', async () => {
+    const onSubmit = vi.fn().mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 500, data: { errors: ['Private server details'] } },
+    });
+    render(<ProductForm submitLabel="Create Product" onSubmit={onSubmit} />);
+    await screen.findByRole('option', { name: 'Ceramics' });
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Clay bowl' } });
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '24.95' } });
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not save this product.');
+    expect(screen.queryByText(/Private server details/)).not.toBeInTheDocument();
+  });
+
   it('validates title, decimal price, and a Rails category ID before submission', async () => {
     const onSubmit = vi.fn();
     render(<ProductForm submitLabel="Create Product" onSubmit={onSubmit} />);

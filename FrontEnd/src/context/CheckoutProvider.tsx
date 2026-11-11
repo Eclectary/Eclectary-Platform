@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { createOrder } from '../services/orderApi';
+import { parseApiError } from '../services/apiErrors';
 import type { CreateOrderRequest, Order } from '../types/order';
 import { useAuth } from './AuthContext';
 import { useCart } from './CartContext';
@@ -78,10 +79,13 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         let order: Order;
         try {
           order = await createOrder(request, token, submissionAttempt.idempotencyKey);
-        } catch {
+        } catch (error) {
+          const apiError = parseApiError(error);
           updateRecord(userId, {
             status: 'error',
-            error: 'We could not confirm your order. Your cart has been kept. Check your orders before trying again.',
+            error: apiError.isClientError
+              ? `${apiError.message} Your cart has been kept.`
+              : 'We could not confirm your order. Your cart has been kept. Check your orders before trying again.',
           });
           return;
         }

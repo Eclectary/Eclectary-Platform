@@ -25,9 +25,7 @@ class Api::V1::SessionsController < Api::V1::BaseController
         token: token
       }, status: :ok
     else
-      render json: {
-        error: "Invalid email or password"
-      }, status: :unauthorized
+      render_api_error("Invalid email or password", status: :unauthorized)
     end
   end
 end

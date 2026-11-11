@@ -57,9 +57,9 @@ module Api
         order = create_order!(order_attributes, items, idempotency_key, fingerprint)
         render_order(order, status: :created)
       rescue InvalidOrderItem => e
-        render json: { errors: [ e.message ] }, status: :unprocessable_entity
+        render_api_error(e.message, status: :unprocessable_entity)
       rescue ActiveRecord::RecordInvalid => e
-        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+        render_api_error(e.record.errors.full_messages, status: :unprocessable_entity)
       rescue ActiveRecord::RecordNotUnique
         # PostgreSQL aborts a transaction after a uniqueness violation, so the
         # winning order must be resolved here, after create_order! has rolled back.
@@ -74,7 +74,7 @@ module Api
       private
 
       def order_params
-        params.require(:order).permit(
+        require_object_parameter(:order).permit(
           :customer_name,
           :customer_email,
           :customer_phone,
@@ -146,9 +146,10 @@ module Api
 
       def render_idempotent_order(order, fingerprint)
         if order.idempotency_fingerprint != fingerprint
-          return render json: {
-            errors: [ "Idempotency key has already been used with a different order payload." ]
-          }, status: :conflict
+          return render_api_error(
+            "Idempotency key has already been used with a different order payload.",
+            status: :conflict
+          )
         end
 
         render_order(order, status: :ok)

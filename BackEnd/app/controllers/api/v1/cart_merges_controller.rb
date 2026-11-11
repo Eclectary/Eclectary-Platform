@@ -37,9 +37,9 @@ module Api
 
         render json: payload
       rescue InvalidMerge => e
-        render json: { errors: [ e.message ] }, status: :unprocessable_entity
+        render_api_error(e.message, status: :unprocessable_entity)
       rescue ActiveRecord::RecordInvalid => e
-        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+        render_api_error(e.record.errors.full_messages, status: :unprocessable_entity)
       end
     end
   end

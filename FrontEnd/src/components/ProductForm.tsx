@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isAxiosError } from "axios";
 
 import ProductImage from "./ProductImage";
+import { parseApiError } from "../services/apiErrors";
 import { getCategories } from "../services/categoryApi";
 import type { ProductMutationInput } from "../services/productApi";
 import type { Category, Product } from "../types";
@@ -17,17 +17,6 @@ interface FormErrors {
   title?: string;
   price?: string;
   category?: string;
-}
-
-function submissionErrorMessage(error: unknown): string {
-  if (isAxiosError(error)) {
-    const errors = error.response?.data?.errors;
-    if (Array.isArray(errors) && errors.every((item) => typeof item === "string")) {
-      return errors.join(" ");
-    }
-  }
-
-  return "We could not save this product. Please try again.";
 }
 
 function ProductForm({ initialProduct, onSubmit, submitLabel }: ProductFormProps) {
@@ -114,7 +103,7 @@ function ProductForm({ initialProduct, onSubmit, submitLabel }: ProductFormProps
         images,
       });
     } catch (error) {
-      setServerError(submissionErrorMessage(error));
+      setServerError(parseApiError(error, "We could not save this product. Please try again.").message);
     } finally {
       setSubmitting(false);
     }
