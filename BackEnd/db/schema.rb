@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -98,6 +98,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_140000) do
     t.string "customer_email"
     t.string "customer_name"
     t.string "customer_phone"
+    t.string "idempotency_fingerprint"
+    t.string "idempotency_key"
     t.string "shipping_address"
     t.decimal "shipping_amount", precision: 10, scale: 2, default: "0.0", null: false
     t.string "shipping_city"
@@ -106,6 +108,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_140000) do
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["user_id", "idempotency_key"], name: "index_orders_on_user_and_idempotency_key_unique", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
 
