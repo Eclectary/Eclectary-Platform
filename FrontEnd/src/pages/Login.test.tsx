@@ -18,9 +18,9 @@ function CurrentLocation() {
   return <output data-testid="location">{location.pathname}</output>;
 }
 
-function renderLogin() {
+function renderLogin(initialEntry: Parameters<typeof MemoryRouter>[0]['initialEntries'] = ['/account/login']) {
   return render(
-    <MemoryRouter initialEntries={['/account/login']}>
+    <MemoryRouter initialEntries={initialEntry}>
       <Routes>
         <Route path="*" element={<><Login /><CurrentLocation /></>} />
       </Routes>
@@ -84,6 +84,56 @@ describe('Login persistence choice', () => {
 
     await waitFor(() => {
       expect(login).toHaveBeenCalledWith('member@example.com', 'password123', false);
+    });
+  });
+
+  it('returns to checkout after login when it was the requested protected page', async () => {
+    const login = vi.fn().mockResolvedValue(undefined);
+    useAuthMock.mockReturnValue({
+      user: null,
+      token: null,
+      loading: false,
+      login,
+      register: vi.fn(),
+      logout: vi.fn(),
+    });
+    const user = userEvent.setup();
+
+    renderLogin([{
+      pathname: '/account/login',
+      state: { from: { pathname: '/checkout', search: '', hash: '' } },
+    }]);
+    await user.type(screen.getByLabelText('Email address'), 'member@example.com');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    });
+  });
+
+  it('falls back to the homepage for an unsafe redirect destination', async () => {
+    const login = vi.fn().mockResolvedValue(undefined);
+    useAuthMock.mockReturnValue({
+      user: null,
+      token: null,
+      loading: false,
+      login,
+      register: vi.fn(),
+      logout: vi.fn(),
+    });
+    const user = userEvent.setup();
+
+    renderLogin([{
+      pathname: '/account/login',
+      state: { from: { pathname: '//malicious.example/checkout' } },
+    }]);
+    await user.type(screen.getByLabelText('Email address'), 'member@example.com');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/');
     });
   });
 
