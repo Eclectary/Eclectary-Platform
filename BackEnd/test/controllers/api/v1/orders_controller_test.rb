@@ -61,6 +61,69 @@ class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_equal products(:one).title, body.fetch("items").first.fetch("title")
   end
 
+  test "repeating an idempotency key with the same payload returns the original order" do
+    headers = auth_headers.merge("Idempotency-Key" => "checkout-123")
+
+    assert_difference -> { Order.count }, 1 do
+      post "/api/v1/orders", params: valid_order_payload, headers: headers
+    end
+    assert_response :created
+    original_data = JSON.parse(response.body).fetch("data")
+    original_order = Order.find(original_data.fetch("id"))
+
+    assert_no_difference [ -> { Order.count }, -> { OrderItem.count } ] do
+      post "/api/v1/orders", params: valid_order_payload, headers: headers
+    end
+
+    assert_response :ok
+    assert_equal original_data, JSON.parse(response.body).fetch("data")
+    assert_equal "checkout-123", original_order.idempotency_key
+    assert_match(/\A[0-9a-f]{64}\z/, original_order.idempotency_fingerprint)
+  end
+
+  test "reusing an idempotency key with a different payload returns conflict" do
+    headers = auth_headers.merge("Idempotency-Key" => "checkout-conflict")
+    post "/api/v1/orders", params: valid_order_payload, headers: headers
+    assert_response :created
+
+    changed_payload = valid_order_payload
+    changed_payload[:order][:shipping_city] = "Raleigh"
+
+    assert_no_difference [ -> { Order.count }, -> { OrderItem.count } ] do
+      post "/api/v1/orders", params: changed_payload, headers: headers
+    end
+
+    assert_response :conflict
+    assert_includes JSON.parse(response.body).fetch("errors").join, "different order payload"
+  end
+
+  test "idempotency keys are scoped to the authenticated user" do
+    key_header = { "Idempotency-Key" => "shared-checkout-key" }
+
+    assert_difference -> { Order.count }, 2 do
+      post "/api/v1/orders", params: valid_order_payload,
+        headers: auth_headers(users(:one)).merge(key_header)
+      assert_response :created
+
+      post "/api/v1/orders", params: valid_order_payload,
+        headers: auth_headers(users(:two)).merge(key_header)
+      assert_response :created
+    end
+
+    assert_equal 2, Order.where(idempotency_key: "shared-checkout-key").count
+  end
+
+  test "requests without an idempotency key continue to create separate orders" do
+    assert_difference -> { Order.count }, 2 do
+      2.times do
+        post "/api/v1/orders", params: valid_order_payload, headers: auth_headers
+        assert_response :created
+      end
+    end
+
+    assert_nil Order.order(:id).last.idempotency_key
+  end
+
   test "server-owned values cannot be overridden by the client" do
     payload = valid_order_payload
     payload[:order].merge!(

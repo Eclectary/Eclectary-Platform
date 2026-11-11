@@ -15,6 +15,7 @@ Rails.application.routes.draw do
       get "health", to: "base#health"
       resources :users, only: %i[create index]
       get "users/me", to: "users#me"
+      patch "users/me", to: "users#update"
       get "cart", to: "carts#show"
       post "cart/merge", to: "cart_merges#create"
       post "cart/items", to: "cart_items#create"

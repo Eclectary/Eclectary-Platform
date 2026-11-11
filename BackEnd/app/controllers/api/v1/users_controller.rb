@@ -7,6 +7,7 @@ class Api::V1::UsersController < Api::V1::BaseController
 
   skip_before_action :authenticate_user, only: :create
   require_role :administrator, only: [ :index ]
+  require_role :seller, only: [ :update ]
 
   rate_limit to: REGISTRATION_RATE_LIMIT,
     within: REGISTRATION_RATE_LIMIT_WINDOW,
@@ -40,6 +41,14 @@ class Api::V1::UsersController < Api::V1::BaseController
     render json: UserSerializer.new(current_user).as_json
   end
 
+  def update
+    if current_user.update(profile_params)
+      render json: UserSerializer.new(current_user).as_json
+    else
+      render json: { errors: current_user.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   # Public self-registration must never allow escalation to administrator.
@@ -56,5 +65,9 @@ class Api::V1::UsersController < Api::V1::BaseController
     )
     permitted[:role] = "customer" if permitted[:role] == "administrator"
     permitted
+  end
+
+  def profile_params
+    params.require(:user).permit(:public_name, :specialty, :bio, :image_url)
   end
 end

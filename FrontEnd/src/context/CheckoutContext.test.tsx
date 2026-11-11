@@ -84,7 +84,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function CheckoutConsumer() {
+function CheckoutConsumer({ checkoutRequest = request }: { checkoutRequest?: CreateOrderRequest }) {
   const { state, submit, dismiss } = useCheckout();
   const { canModifyCart, items } = useCart();
 
@@ -100,17 +100,23 @@ function CheckoutConsumer() {
         </>
       )}
       {state.status === 'error' && <p role="alert">{state.error}</p>}
-      <button type="button" onClick={() => submit(request)}>Submit order</button>
+      <button type="button" onClick={() => submit(checkoutRequest)}>Submit order</button>
       <button type="button" onClick={dismiss}>Dismiss checkout</button>
     </>
   );
 }
 
-function Harness({ showConsumer }: { showConsumer: boolean }) {
+function Harness({
+  showConsumer,
+  checkoutRequest = request,
+}: {
+  showConsumer: boolean;
+  checkoutRequest?: CreateOrderRequest;
+}) {
   return (
     <CartProvider>
       <CheckoutProvider>
-        {showConsumer && <CheckoutConsumer />}
+        {showConsumer && <CheckoutConsumer checkoutRequest={checkoutRequest} />}
       </CheckoutProvider>
     </CartProvider>
   );
@@ -179,7 +185,11 @@ describe('persistent checkout context', () => {
     });
 
     expect(createOrder).toHaveBeenCalledOnce();
-    expect(createOrder).toHaveBeenCalledWith(request, 'session-a');
+    expect(createOrder).toHaveBeenCalledWith(
+      request,
+      'session-a',
+      expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i),
+    );
     expect(screen.getByTestId('checkout-status')).toHaveTextContent('pending');
     rerender(<Harness showConsumer={false} />);
     rerender(<Harness showConsumer />);
@@ -270,6 +280,49 @@ describe('persistent checkout context', () => {
     expect(clearServerCart).not.toHaveBeenCalled();
   });
 
+  it('reuses the idempotency key when an unchanged failed submission is retried', async () => {
+    vi.mocked(createOrder)
+      .mockRejectedValueOnce(new Error('Network failed'))
+      .mockResolvedValueOnce(order);
+    render(<Harness showConsumer />);
+    await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit order' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/check your orders before trying again/i);
+    const firstKey = vi.mocked(createOrder).mock.calls[0][2];
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss checkout' }));
+    await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit order' }));
+
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(createOrder).mock.calls[1][2]).toBe(firstKey);
+    expect(await screen.findByText('Order #91')).toBeInTheDocument();
+  });
+
+  it('generates a new idempotency key when the retried payload changes', async () => {
+    const changedRequest = { ...request, shipping_city: 'Salem' };
+    vi.mocked(createOrder)
+      .mockRejectedValueOnce(new Error('Network failed'))
+      .mockResolvedValueOnce({ ...order, shipping_city: 'Salem' });
+    const { rerender } = render(<Harness showConsumer />);
+    await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit order' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/check your orders before trying again/i);
+    const firstKey = vi.mocked(createOrder).mock.calls[0][2];
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss checkout' }));
+    rerender(<Harness showConsumer checkoutRequest={changedRequest} />);
+    await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit order' }));
+
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(2));
+    expect(createOrder).toHaveBeenLastCalledWith(changedRequest, 'session-a', expect.any(String));
+    expect(vi.mocked(createOrder).mock.calls[1][2]).not.toBe(firstKey);
+    expect(await screen.findByText('Order #91')).toBeInTheDocument();
+  });
+
   it('does not clear another account cart when authentication changes before order confirmation', async () => {
     const pending = deferred<Order>();
     vi.mocked(createOrder).mockReturnValue(pending.promise);
@@ -284,7 +337,7 @@ describe('persistent checkout context', () => {
     await waitFor(() => expect(screen.getByTestId('cart-ready')).toHaveTextContent('ready'));
     await act(async () => pending.resolve(order));
 
-    expect(createOrder).toHaveBeenCalledWith(request, 'session-a');
+    expect(createOrder).toHaveBeenCalledWith(request, 'session-a', expect.any(String));
     expect(clearServerCart).not.toHaveBeenCalled();
     expect(screen.getByTestId('checkout-status')).toHaveTextContent('idle');
     expect(screen.getByTestId('cart-items')).toHaveTextContent('42');

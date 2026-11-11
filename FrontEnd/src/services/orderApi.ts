@@ -51,9 +51,16 @@ function normalizeSellerOrder(order: SellerOrderApiResponse): SellerOrder {
   };
 }
 
-export async function createOrder(order: CreateOrderRequest, token: string): Promise<Order> {
+export async function createOrder(
+  order: CreateOrderRequest,
+  token: string,
+  idempotencyKey: string,
+): Promise<Order> {
   const response = await api.post<{ data: OrderApiResponse }>('/orders', { order }, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Idempotency-Key': idempotencyKey,
+    },
   });
   const createdOrder = response.data.data;
 

@@ -66,10 +66,13 @@ describe('createOrder', () => {
       },
     });
 
-    const order = await createOrder(request, 'test-token');
+    const order = await createOrder(request, 'test-token', 'checkout-attempt-id');
 
     expect(postMock).toHaveBeenCalledWith('/orders', { order: request }, {
-      headers: { Authorization: 'Bearer test-token' },
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Idempotency-Key': 'checkout-attempt-id',
+      },
     });
     expect(order).toMatchObject({ shipping_amount: 6.5, subtotal: 39.98, final_total: 46.48 });
     expect(order.items[0].price).toBe(19.99);

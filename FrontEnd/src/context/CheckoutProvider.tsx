@@ -10,12 +10,31 @@ import type { CheckoutState } from './CheckoutContext';
 
 const IDLE: CheckoutState = { status: 'idle' };
 
+type SubmissionAttempt = {
+  payload: string;
+  idempotencyKey: string;
+};
+
+function serializeOrderPayload(request: CreateOrderRequest) {
+  return JSON.stringify({
+    customer_name: request.customer_name,
+    customer_email: request.customer_email,
+    customer_phone: request.customer_phone,
+    shipping_address: request.shipping_address,
+    shipping_city: request.shipping_city,
+    shipping_state: request.shipping_state,
+    shipping_postal_code: request.shipping_postal_code,
+    items: request.items.map(({ product_id, quantity }) => ({ product_id, quantity })),
+  });
+}
+
 export function CheckoutProvider({ children }: { children: ReactNode }) {
   const { user, token, loading } = useAuth();
   const { beginCheckout } = useCart();
   const userId = user?.id;
   const activeSessionRef = useRef<{ userId: number; token: string } | null>(null);
   const recordsRef = useRef(new Map<number, CheckoutState>());
+  const submissionAttemptsRef = useRef(new Map<number, SubmissionAttempt>());
   const [records, setRecords] = useState<Map<number, CheckoutState>>(() => new Map());
 
   useLayoutEffect(() => {
@@ -46,12 +65,19 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
+    const payload = serializeOrderPayload(request);
+    const previousAttempt = submissionAttemptsRef.current.get(userId);
+    const submissionAttempt = previousAttempt?.payload === payload
+      ? previousAttempt
+      : { payload, idempotencyKey: crypto.randomUUID() };
+    submissionAttemptsRef.current.set(userId, submissionAttempt);
+
     updateRecord(userId, { status: 'pending' });
     void (async () => {
       try {
         let order: Order;
         try {
-          order = await createOrder(request, token);
+          order = await createOrder(request, token, submissionAttempt.idempotencyKey);
         } catch {
           updateRecord(userId, {
             status: 'error',
@@ -68,6 +94,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        submissionAttemptsRef.current.delete(userId);
         updateRecord(userId, { status: 'pending', order });
         let cartClearWarning: string | null = null;
         try {
