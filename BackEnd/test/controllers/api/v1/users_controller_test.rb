@@ -207,6 +207,84 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "customer", body["role"]
   end
 
+  test "seller can retrieve their editable profile fields" do
+    seller = users(:two)
+    seller.update!(
+      public_name: "Clay Studio",
+      specialty: "Ceramics",
+      bio: "Handmade bowls.",
+      image_url: "https://example.com/clay.jpg"
+    )
+
+    get "/api/v1/users/me", headers: auth_headers(seller)
+
+    assert_response :success
+    assert_equal({
+      "public_name" => "Clay Studio",
+      "specialty" => "Ceramics",
+      "bio" => "Handmade bowls.",
+      "image_url" => "https://example.com/clay.jpg"
+    }, response.parsed_body.slice("public_name", "specialty", "bio", "image_url"))
+  end
+
+  test "seller can update their profile fields" do
+    patch "/api/v1/users/me", headers: auth_headers(users(:two)), params: {
+      user: {
+        public_name: "Updated Studio",
+        specialty: "Textiles",
+        bio: "Handwoven goods.",
+        image_url: "https://example.com/studio.jpg"
+      }
+    }
+
+    assert_response :success
+    seller = users(:two).reload
+    assert_equal "Updated Studio", seller.public_name
+    assert_equal "Textiles", seller.specialty
+    assert_equal "Handwoven goods.", seller.bio
+    assert_equal "https://example.com/studio.jpg", seller.image_url
+    assert_equal "Updated Studio", response.parsed_body["public_name"]
+  end
+
+  test "profile update cannot change protected account fields or another seller" do
+    seller = users(:two)
+    other_seller = User.create!(email: "profile-owner@example.com", password: "password123", role: "seller")
+    original_password_digest = seller.password_digest
+
+    patch "/api/v1/users/me", headers: auth_headers(seller), params: {
+      user: {
+        public_name: "My Studio",
+        email: "changed@example.com",
+        password: "changed-password",
+        password_confirmation: "changed-password",
+        role: "administrator",
+        user_id: other_seller.id
+      }
+    }
+
+    assert_response :success
+    seller.reload
+    other_seller.reload
+    assert_equal "My Studio", seller.public_name
+    assert_equal "seller@example.com", seller.email
+    assert_equal "seller", seller.role
+    assert_equal original_password_digest, seller.password_digest
+    assert_equal "profile-owner@example.com", other_seller.email
+    assert_nil other_seller.public_name
+  end
+
+  test "profile update requires authentication and seller role" do
+    patch "/api/v1/users/me", params: { user: { public_name: "Unauthorized" } }
+    assert_response :unauthorized
+
+    [ users(:one), users(:administrator) ].each do |user|
+      patch "/api/v1/users/me",
+        headers: auth_headers(user),
+        params: { user: { public_name: "Forbidden" } }
+      assert_response :forbidden
+    end
+  end
+
   test "me with a token missing the user ID is unauthorized" do
     token = JsonWebToken.encode({})
     get "/api/v1/users/me", headers: { "Authorization" => "Bearer #{token}" }
