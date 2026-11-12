@@ -45,4 +45,10 @@ module BackEnd
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = false
   end
+
+  if ENV.key?("INTEGRATION_CONFIRM") || ENV["INTEGRATION_PROOF"] == "1"
+    require_relative "../lib/integration_database"
+    raise IntegrationDatabase::VerificationError, "Integration mode requires development" unless Rails.env.development?
+    IntegrationDatabase.prepare_rails_environment!(ENV)
+  end
 end

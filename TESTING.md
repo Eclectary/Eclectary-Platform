@@ -86,6 +86,22 @@ This document outlines the testing setup for product components in the Eclectary
 
 ## Running Tests
 
+### Full-stack live integration
+
+Follow the [isolated PostgreSQL, Rails, Vite, and live-suite instructions](README.md#isolated-integration-database)
+and the [integration data guide](BackEnd/INTEGRATION_DATA.md). The live suite
+writes fictional records and does not clean them up; never target normal
+development or production data. Its HTTP checks do not exercise browser
+navigation, rendering, or interactive customer and seller workflows.
+
+The database guard's standalone unit tests use mocks and a local Unix socket;
+they do not connect to PostgreSQL or the running application:
+
+```bash
+cd BackEnd
+ruby test/lib/integration_database_unit_test.rb
+```
+
 ### Run all tests
 ```bash
 npm test

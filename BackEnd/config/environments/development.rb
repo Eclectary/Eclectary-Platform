@@ -1,6 +1,11 @@
 require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
+  if ENV["INTEGRATION_PROOF"] == "1"
+    require Rails.root.join("lib/integration_database_proof")
+    config.middleware.use IntegrationDatabaseProof
+  end
+
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Make code changes take effect immediately without server restart.
