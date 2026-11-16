@@ -7,6 +7,16 @@ describe("resolveApiBaseUrl", () => {
     expect(resolveApiBaseUrl(undefined, false)).toBe("http://localhost:3000/api/v1");
   });
 
+  it("accepts a root-relative API URL in a non-production build", () => {
+    expect(resolveApiBaseUrl(" /api/v1/ ", false)).toBe("/api/v1");
+  });
+
+  it("rejects a protocol-relative API URL in a non-production build", () => {
+    expect(() => resolveApiBaseUrl("//api.example.com/api/v1", false)).toThrow(
+      "VITE_API_URL must not be a protocol-relative URL",
+    );
+  });
+
   it("requires an explicit API URL in production", () => {
     expect(() => resolveApiBaseUrl(undefined, true)).toThrow(
       "VITE_API_URL must be configured for production builds",
@@ -22,6 +32,12 @@ describe("resolveApiBaseUrl", () => {
   it("rejects an insecure production API URL", () => {
     expect(() => resolveApiBaseUrl("http://api.example.com/api/v1", true)).toThrow(
       "VITE_API_URL must use HTTPS for production builds",
+    );
+  });
+
+  it("rejects a relative API URL in production", () => {
+    expect(() => resolveApiBaseUrl("/api/v1", true)).toThrow(
+      "VITE_API_URL must be an absolute HTTPS URL for production builds",
     );
   });
 

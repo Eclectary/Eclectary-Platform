@@ -11,6 +11,30 @@ export function resolveApiBaseUrl(configuredUrl: string | undefined, production:
     return LOCAL_API_BASE_URL;
   }
 
+  if (candidate.startsWith("/")) {
+    if (production) {
+      throw new Error("VITE_API_URL must be an absolute HTTPS URL for production builds");
+    }
+
+    let relativeUrl: URL;
+
+    try {
+      relativeUrl = new URL(candidate, "http://vite.local");
+    } catch {
+      throw new Error("VITE_API_URL must be a root-relative path or an absolute HTTP(S) URL");
+    }
+
+    if (relativeUrl.origin !== "http://vite.local") {
+      throw new Error("VITE_API_URL must not be a protocol-relative URL");
+    }
+
+    if (relativeUrl.search || relativeUrl.hash) {
+      throw new Error("VITE_API_URL must not include query parameters or a fragment");
+    }
+
+    return relativeUrl.pathname.replace(/\/+$/, "") || "/";
+  }
+
   let url: URL;
 
   try {

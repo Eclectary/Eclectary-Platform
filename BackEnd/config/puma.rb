@@ -32,7 +32,6 @@ if ENV["RAILS_ENV"] == "development" && ENV["INTEGRATION_PROOF"] == "1"
   raise "Integration verification requires WEB_CONCURRENCY=0" unless ENV["WEB_CONCURRENCY"] == "0"
   socket = ENV.fetch("INTEGRATION_API_SOCKET")
   raise "INTEGRATION_API_SOCKET must be an absolute path" unless socket.start_with?("/")
-  port 3000, "127.0.0.1"
   bind "unix://#{socket}?umask=0077"
 else
   # Specifies the `port` that Puma will listen on to receive requests; default is 3000.

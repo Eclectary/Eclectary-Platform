@@ -172,7 +172,7 @@ class IntegrationDatabaseUnitTest < Minitest::Test
     ENV["RAILS_ENV"] = "development"
     config = PumaConfig.new
     config.instance_eval(source, config_path)
-    assert_equal [ [ 3000, "127.0.0.1" ] ], config.ports
+    assert_empty config.ports
     assert_equal [ "unix:///tmp/example-integration.sock?umask=0077" ], config.bindings
 
     ENV["WEB_CONCURRENCY"] = "2"

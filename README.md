@@ -107,14 +107,10 @@ unset SOLID_QUEUE_IN_PUMA
 bundle exec ruby bin/rails runner 'IntegrationDatabase.validate_secret!(ENV["INTEGRATION_PROOF_SECRET"]); c = ActiveRecord::Base.connection; IntegrationDatabase.validate_connection!(c, ENV); abort "Pending migrations" if c.pool.migration_context.needs_migration?; puts "Verified integration connection; schema current; no database writes."'
 ```
 
-Check `ss -ltnp 'sport = :3000'` before launching. The integration server uses
-`127.0.0.1:3000`, so an existing Rails server on that port must first be stopped
-manually in its owning terminal (Ctrl+C), **only when ready to switch**. Do not
-stop Vite; its existing API URL and port 5173 remain valid. Do not remove a Unix
-socket or PID file belonging to a running process.
-
-After confirming port 3000 is free and the configured socket does not already
-exist, start Rails in the same configured terminal:
+The integration server listens only on its Unix socket and does not bind TCP port
+3000. Do not remove a Unix socket or PID file belonging to a running process.
+After confirming the configured socket does not already exist, start Rails in
+the same configured terminal:
 
 ```bash
 test ! -e "$INTEGRATION_API_SOCKET" && test ! -L "$INTEGRATION_API_SOCKET" &&
@@ -125,9 +121,10 @@ Only development mode installs the proof middleware. Startup refuses a mismatche
 database configuration or identity before serving requests. It adds a keyed proof to
 the existing health response for a local challenge; it exposes neither database
 details nor credentials and adds no database-information endpoint. The Unix
-socket is local and restricted to its owner. Do not expose the Rails server
-or the socket to untrusted users. Do not pass Rails `-b` or `-p` options: they
-override Puma's configured bindings and can remove the verification socket.
+socket is local and restricted to its owner. Do not expose the Rails server or
+the socket to untrusted users. Do not pass Rails `-b` or `-p` options: they
+override Puma's configured binding and can expose a TCP listener or remove the
+verification socket.
 Stop this server after integration testing.
 
 After launch, in another backend terminal, repeat the database exports above and
@@ -152,13 +149,22 @@ From the repository root, in a second terminal:
 
 ```bash
 npm install
-VITE_API_URL=http://localhost:3000/api/v1 \
-npm run dev -- --host localhost --port 5173 --strictPort
+VITE_API_URL=/api/v1 \
+INTEGRATION_API_SOCKET="$PWD/BackEnd/tmp/integration-api.sock" \
+npm run dev -- --mode integration --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-`VITE_API_URL` may be omitted for local development because the frontend has the
-same URL as its development fallback. `--strictPort` prevents Vite from silently
-moving to another port and breaking CORS.
+Integration mode refuses to start unless `INTEGRATION_API_SOCKET` is an absolute
+path to an existing Unix socket. Vite proxies `/api` and
+`/rails/active_storage` to that socket without opening or falling back to a Rails
+TCP port. The relative API URL keeps browser traffic on the Vite origin, so CORS
+is not involved. `--strictPort` prevents Vite from silently moving to another
+port. Stop and restart Vite whenever the mode, socket, or API URL changes; hot
+module replacement does not reload this configuration.
+
+Outside integration mode, Vite does not install the socket proxy. Normal local
+development may omit `VITE_API_URL` to use `http://localhost:3000/api/v1`, or set
+an explicit HTTP(S) URL. Production builds still require an explicit HTTPS URL.
 
 ### Run the live API suite
 
