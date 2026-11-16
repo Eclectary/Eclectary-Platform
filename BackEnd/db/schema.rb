@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -114,6 +114,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_150000) do
 
   create_table "products", force: :cascade do |t|
     t.boolean "active", default: true, null: false
+    t.string "approval_status", default: "pending", null: false
     t.bigint "category_id", null: false
     t.datetime "created_at", null: false
     t.text "description"
@@ -122,8 +123,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_150000) do
     t.string "subcategory"
     t.string "title"
     t.datetime "updated_at", null: false
+    t.index ["active", "approval_status"], name: "index_products_on_active_and_approval_status"
     t.index ["category_id"], name: "index_products_on_category_id"
     t.index ["seller_id"], name: "index_products_on_seller_id"
+    t.check_constraint "approval_status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying]::text[])", name: "products_approval_status_valid"
   end
 
   create_table "users", force: :cascade do |t|

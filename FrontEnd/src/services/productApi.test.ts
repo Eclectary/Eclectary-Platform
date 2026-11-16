@@ -146,6 +146,7 @@ describe('seller product mutations', () => {
     description: 'Hand-thrown',
     price: '24.95',
     active: true,
+    approval_status: 'pending' as const,
     creator: 'Maker #7',
     seller_id: 7,
     category: '12',
@@ -165,8 +166,12 @@ describe('seller product mutations', () => {
       .mockResolvedValueOnce({ data: { data: [responseProduct] } })
       .mockResolvedValueOnce({ data: { data: responseProduct } });
 
-    await expect(getSellerProducts()).resolves.toMatchObject([{ id: 42, price: 24.95, active: true }]);
-    await expect(getSellerProduct('42')).resolves.toMatchObject({ id: 42, price: 24.95, active: true });
+    await expect(getSellerProducts()).resolves.toMatchObject([{
+      id: 42, price: 24.95, active: true, approval_status: 'pending',
+    }]);
+    await expect(getSellerProduct('42')).resolves.toMatchObject({
+      id: 42, price: 24.95, active: true, approval_status: 'pending',
+    });
     expect(getMock).toHaveBeenNthCalledWith(1, '/seller/products');
     expect(getMock).toHaveBeenNthCalledWith(2, '/seller/products/42');
   });

@@ -44,8 +44,11 @@ No payment details are stored.
 - Both sellers own additional active products that can be used to assemble new mixed-seller carts and
   checkout requests.
 - Seller one owns `Integration Retired Planter`, an inactive product for unavailable-product checks.
-- Rerunning the setup restores the managed cart, pending order, product state, account credentials, and
-  fulfillment statuses. Orders and carts created separately during integration testing are left alone.
+- Intentional demonstration seeds and managed integration products are approved explicitly; ordinary
+  seller submissions still default to pending review. The retired planter remains inactive.
+- Rerunning the setup restores the managed cart, pending order, product state (including approved
+  status), account credentials, and fulfillment statuses. Orders and carts created separately during
+  integration testing are left alone.
 - The live suite separately creates a customer, cart, merge record, two orders, and a seller product;
   it updates/deactivates that product and changes fulfillment on its new order. It does not clean up
   these records. Recreate the disposable instance when a completely clean dataset is needed.

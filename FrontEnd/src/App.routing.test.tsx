@@ -35,6 +35,7 @@ vi.mock('./pages/Checkout', () => ({ default: () => <h1>Checkout page</h1> }));
 vi.mock('./pages/OrderConfirmation', () => ({ default: () => <h1>Order confirmation page</h1> }));
 vi.mock('./pages/Login', () => ({ default: () => <h1>Login page</h1> }));
 vi.mock('./pages/Register', () => ({ default: () => <h1>Register page</h1> }));
+vi.mock('./pages/BecomeSeller', () => ({ default: () => <h1>Become Seller page</h1> }));
 vi.mock('./pages/Profile', () => ({ default: () => <h1>Profile page</h1> }));
 vi.mock('./pages/AddProduct', () => ({ default: () => <h2>Add Product</h2> }));
 vi.mock('./pages/EditProduct', () => ({ default: () => <h2>Edit Product</h2> }));
@@ -53,6 +54,7 @@ const signedOutAuth = {
   loading: false,
   login: vi.fn(),
   register: vi.fn(),
+  becomeSeller: vi.fn(),
   logout: vi.fn(),
 };
 
@@ -78,6 +80,7 @@ afterEach(() => {
 describe('protected application routes', () => {
   it.each([
     '/account/profile',
+    '/account/become-seller',
     '/checkout',
     '/seller',
     '/dashboard',
@@ -95,6 +98,7 @@ describe('protected application routes', () => {
 
   it.each([
     ['/account/profile', 'Profile page'],
+    ['/account/become-seller', 'Become Seller page'],
     ['/checkout', 'Checkout page'],
   ])('preserves authenticated customer access to %s', (path, heading) => {
     renderPath(path, 'customer');
@@ -159,8 +163,8 @@ describe('protected application routes', () => {
 describe('seller dashboard product data', () => {
   it('counts and displays the products returned by the private seller endpoint', async () => {
     getSellerProductsMock.mockResolvedValue([
-      { id: 1, title: 'Owned bowl', creator: 'Seller', price: 10, seller_id: 7, active: true },
-      { id: 2, title: 'Owned print', creator: 'Seller', price: 15, seller_id: 7, active: false },
+      { id: 1, title: 'Owned bowl', creator: 'Seller', price: 10, seller_id: 7, active: true, approval_status: 'pending' },
+      { id: 2, title: 'Owned print', creator: 'Seller', price: 15, seller_id: 7, active: false, approval_status: 'approved' },
     ]);
 
     const overview = renderPath('/dashboard', 'seller');
@@ -172,6 +176,8 @@ describe('seller dashboard product data', () => {
     expect(screen.getByText('Owned print')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('Inactive')).toBeInTheDocument();
+    expect(screen.getByText('Pending review')).toBeInTheDocument();
+    expect(screen.getByText('Approved')).toBeInTheDocument();
   });
 
   it('keeps loading, error, retry, and empty states inside the dashboard page', async () => {

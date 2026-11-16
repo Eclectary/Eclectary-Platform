@@ -14,6 +14,7 @@ class ProductSerializer
       description: @product.description,
       price: @product.price,
       active: @product.active,
+      approval_status: @product.approval_status,
       image: image_urls.first,
       images: image_urls,
       creator: @product.seller.public_name.presence || "Maker ##{@product.seller.id}",

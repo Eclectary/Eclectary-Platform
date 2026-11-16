@@ -1,4 +1,6 @@
 class Product < ApplicationRecord
+  APPROVAL_STATUSES = %w[pending approved rejected].freeze
+  MATERIAL_REVIEW_ATTRIBUTES = %w[title description price category_id subcategory].freeze
   SUPPORTED_IMAGE_CONTENT_TYPES = %w[image/jpeg image/png image/webp].freeze
   MAX_IMAGE_SIZE = 5.megabytes
 
@@ -10,10 +12,33 @@ class Product < ApplicationRecord
   has_many :orders, through: :order_items
 
   scope :active, -> { where(active: true) }
+  scope :approved, -> { where(approval_status: "approved") }
+  scope :publicly_available, -> { active.approved }
 
   validates :title, presence: true
   validates :price, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  validates :approval_status, presence: true, inclusion: { in: APPROVAL_STATUSES }
   validate :images_are_supported
+
+  def approved?
+    approval_status == "approved"
+  end
+
+  def publicly_available?
+    active? && approved?
+  end
+
+  def assign_seller_listing_changes(attributes, images_changed: false)
+    assign_attributes(attributes)
+
+    material_attributes_changed = MATERIAL_REVIEW_ATTRIBUTES.any? do |attribute|
+      will_save_change_to_attribute?(attribute)
+    end
+
+    if approval_status != "pending" && (material_attributes_changed || images_changed)
+      self.approval_status = "pending"
+    end
+  end
 
   private
 

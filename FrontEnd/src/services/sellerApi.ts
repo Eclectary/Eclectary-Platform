@@ -1,5 +1,5 @@
 import { sellers } from '../data/sellers';
-import type { Seller } from '../types';
+import type { Seller, User } from '../types';
 import api from './api';
 
 interface PublicSeller {
@@ -8,6 +8,13 @@ interface PublicSeller {
 	image: string | null;
 	specialty: string | null;
 	bio: string | null;
+}
+
+export interface SellerRegistrationInput {
+	public_name: string;
+	specialty: string;
+	bio?: string;
+	image_url?: string;
 }
 
 function toSeller(seller: PublicSeller): Seller {
@@ -28,6 +35,11 @@ export async function getPublicSellers(): Promise<Seller[]> {
 export async function getPublicSellerById(id: string): Promise<Seller> {
 	const response = await api.get<{ data: PublicSeller }>(`/sellers/${encodeURIComponent(id)}`);
 	return toSeller(response.data.data);
+}
+
+export async function registerSeller(input: SellerRegistrationInput): Promise<User> {
+	const response = await api.post<User>('/seller/registration', { seller: input });
+	return response.data;
 }
 
 export function getSellers(): Seller[] {

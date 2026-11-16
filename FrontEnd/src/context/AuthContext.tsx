@@ -14,6 +14,7 @@ import {
   AUTH_SESSION_UNAUTHORIZED_EVENT,
   type UnauthorizedAuthSessionDetail,
 } from "../services/authSession";
+import { registerSeller, type SellerRegistrationInput } from "../services/sellerApi";
 import type { User } from "../types/user";
 
 interface AuthContextType {
@@ -26,6 +27,7 @@ interface AuthContextType {
     password: string,
     passwordConfirmation: string
   ) => Promise<void>;
+  becomeSeller: (input: SellerRegistrationInput) => Promise<void>;
   logout: () => void;
 }
 
@@ -172,6 +174,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const becomeSeller = async (input: SellerRegistrationInput) => {
+    const requestVersion = sessionVersion.current;
+    const authenticatedToken = activeToken.current;
+    const updatedUser = await registerSeller(input);
+
+    if (
+      sessionVersion.current === requestVersion
+      && activeToken.current === authenticatedToken
+      && authenticatedToken
+    ) {
+      setUser(updatedUser);
+    }
+  };
+
   const logout = () => {
     clearAuthentication();
     localStorage.removeItem("eclectary-auth");
@@ -186,6 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         register,
+        becomeSeller,
         logout,
       }}
     >

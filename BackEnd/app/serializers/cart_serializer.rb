@@ -12,7 +12,7 @@ class CartSerializer
           id: cart_item.id,
           product_id: cart_item.product_id,
           quantity: cart_item.quantity,
-          status: product.active? ? "available" : "unavailable",
+          status: product.publicly_available? ? "available" : "unavailable",
           product: ProductSerializer.new(product).as_json
         }
       end

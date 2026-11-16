@@ -63,6 +63,7 @@ const guestAuth = {
   loading: false,
   login: vi.fn(),
   register: vi.fn(),
+  becomeSeller: vi.fn(),
   logout: vi.fn(),
 };
 

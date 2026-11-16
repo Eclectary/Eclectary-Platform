@@ -49,6 +49,7 @@ describe('Login persistence choice', () => {
       loading: false,
       login,
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -72,6 +73,7 @@ describe('Login persistence choice', () => {
       loading: false,
       login,
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -95,6 +97,7 @@ describe('Login persistence choice', () => {
       loading: false,
       login,
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -120,6 +123,7 @@ describe('Login persistence choice', () => {
       loading: false,
       login,
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -150,6 +154,7 @@ describe('Login persistence choice', () => {
       loading: false,
       login,
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -167,7 +172,7 @@ describe('Login persistence choice', () => {
     useAuthMock.mockReturnValue({
       user: null, token: null, loading: false,
       login: vi.fn().mockRejectedValue(railsError(429, { errors: ['Too many requests. Please try again later.'] })),
-      register: vi.fn(), logout: vi.fn(),
+      register: vi.fn(), becomeSeller: vi.fn(), logout: vi.fn(),
     });
     const user = userEvent.setup();
     renderLogin();
@@ -187,6 +192,7 @@ describe('Login persistence choice', () => {
       loading: false,
       login,
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -210,6 +216,7 @@ describe('Login persistence choice', () => {
       loading: false,
       login,
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();

@@ -68,7 +68,7 @@ beforeEach(() => {
   useCheckoutMock.mockReturnValue({ state: { status: 'idle' }, submit, dismiss });
   useAuthMock.mockReturnValue({
     user: { id: 7, email: 'member@example.com', role: 'customer' }, token: 'token', loading: false,
-    login: vi.fn(), register: vi.fn(), logout: vi.fn(),
+    login: vi.fn(), register: vi.fn(), becomeSeller: vi.fn(), logout: vi.fn(),
   });
   useCartMock.mockReturnValue({
     loading: false, error: null, mutationLoading: false, mutationError: null,
@@ -141,7 +141,7 @@ describe('Checkout', () => {
 
   it('does not allow checkout without an authenticated session', () => {
     useAuthMock.mockReturnValue({
-      user: null, token: null, loading: false, login: vi.fn(), register: vi.fn(), logout: vi.fn(),
+      user: null, token: null, loading: false, login: vi.fn(), register: vi.fn(), becomeSeller: vi.fn(), logout: vi.fn(),
     });
     renderCheckout();
 

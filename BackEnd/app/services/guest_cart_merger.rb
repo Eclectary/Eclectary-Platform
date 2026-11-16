@@ -22,7 +22,7 @@ class GuestCartMerger
         next
       end
 
-      product = Product.active.lock("FOR SHARE").find_by(id: product_id)
+      product = Product.publicly_available.lock("FOR SHARE").find_by(id: product_id)
       unless product
         skipped_items << { index: index, product_id: product_id, reason: "unavailable_product" }
         next

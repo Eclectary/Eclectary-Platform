@@ -13,7 +13,7 @@ module Api
 
         created = false
         cart = with_locked_cart do |user_cart|
-          product = Product.active.find_by(id: product_id)
+          product = Product.publicly_available.find_by(id: product_id)
           raise InvalidCartItem, "Product #{product_id} is unavailable." unless product
 
           cart_item = user_cart.cart_items.find_or_initialize_by(product: product)

@@ -44,6 +44,7 @@ describe('ProtectedRoute', () => {
       loading: true,
       login: vi.fn(),
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -60,6 +61,7 @@ describe('ProtectedRoute', () => {
       loading: false,
       login: vi.fn(),
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -76,6 +78,7 @@ describe('ProtectedRoute', () => {
       loading: false,
       login: vi.fn(),
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -92,6 +95,7 @@ describe('ProtectedRoute', () => {
       loading: false,
       login: vi.fn(),
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -108,6 +112,7 @@ describe('ProtectedRoute', () => {
       loading: false,
       login: vi.fn(),
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
 

@@ -12,6 +12,7 @@ import { AuthSessionValidationError } from '../services/authErrors';
 import {
   notifyUnauthorizedAuthSession,
 } from '../services/authSession';
+import { registerSeller } from '../services/sellerApi';
 import { AuthProvider, useAuth } from './AuthContext';
 
 vi.mock('../services/authApi', () => ({
@@ -20,9 +21,14 @@ vi.mock('../services/authApi', () => ({
   register: vi.fn(),
 }));
 
+vi.mock('../services/sellerApi', () => ({
+  registerSeller: vi.fn(),
+}));
+
 const getCurrentUserMock = vi.mocked(getCurrentUser);
 const loginApiMock = vi.mocked(loginApi);
 const registerApiMock = vi.mocked(registerApi);
+const registerSellerMock = vi.mocked(registerSeller);
 const currentUser = {
   id: 7,
   email: 'member@example.com',
@@ -108,12 +114,26 @@ function AuthRaceState() {
   );
 }
 
+function SellerUpgradeState() {
+  const { user, becomeSeller } = useAuth();
+
+  return (
+    <>
+      <p>{user?.role ?? 'signed-out'}</p>
+      <button type="button" onClick={() => void becomeSeller({ public_name: 'Clay Studio', specialty: 'Ceramics' })}>
+        Become seller
+      </button>
+    </>
+  );
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   getCurrentUserMock.mockReset();
   loginApiMock.mockReset();
   registerApiMock.mockReset();
+  registerSellerMock.mockReset();
 });
 
 afterEach(() => {
@@ -121,6 +141,20 @@ afterEach(() => {
 });
 
 describe('AuthProvider token persistence', () => {
+  it('updates the current user immediately after seller registration', async () => {
+    window.localStorage.setItem('token', 'remembered-token');
+    getCurrentUserMock.mockResolvedValue(currentUser);
+    registerSellerMock.mockResolvedValue({ ...currentUser, role: 'seller' });
+    const user = userEvent.setup();
+
+    render(<AuthProvider><SellerUpgradeState /></AuthProvider>);
+    expect(await screen.findByText('customer')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Become seller' }));
+
+    expect(await screen.findByText('seller')).toBeInTheDocument();
+    expect(window.localStorage.getItem('token')).toBe('remembered-token');
+  });
+
   it('stores a remembered login only in localStorage', async () => {
     loginApiMock.mockResolvedValue({ token: 'remembered-token' });
     getCurrentUserMock.mockResolvedValue(currentUser);

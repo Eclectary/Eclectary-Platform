@@ -113,6 +113,7 @@ products = [
   product.price = attributes[:price]
   product.seller = makers.fetch(attributes[:maker])
   product.category = categories.fetch(attributes[:category])
+  product.approval_status = "approved"
   product.save!
 
   unless product.images.attached?

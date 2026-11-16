@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import api from './api';
-import { getPublicSellerById, getPublicSellers } from './sellerApi';
+import { getPublicSellerById, getPublicSellers, registerSeller } from './sellerApi';
 
-vi.mock('./api', () => ({ default: { get: vi.fn() } }));
+vi.mock('./api', () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 const getMock = vi.mocked(api.get);
+const postMock = vi.mocked(api.post);
 const seller = {
   id: 42,
   name: 'Clay Studio',
@@ -13,7 +14,10 @@ const seller = {
   bio: 'Handmade bowls.',
 };
 
-beforeEach(() => { getMock.mockReset(); });
+beforeEach(() => {
+  getMock.mockReset();
+  postMock.mockReset();
+});
 
 describe('public seller API', () => {
   it('uses the shared API client and maps the Rails data envelope', async () => {
@@ -46,5 +50,21 @@ describe('public seller API', () => {
     getMock.mockRejectedValue(new Error('Network unavailable'));
     await expect(getPublicSellers()).rejects.toThrow('Network unavailable');
     await expect(getPublicSellerById('42')).rejects.toThrow('Network unavailable');
+  });
+});
+
+describe('seller registration API', () => {
+  it('promotes the authenticated account with shop fields', async () => {
+    const input = {
+      public_name: 'Clay Studio',
+      specialty: 'Ceramics',
+      bio: 'Handmade bowls.',
+      image_url: 'https://example.com/clay.jpg',
+    };
+    const sellerUser = { id: 42, email: 'maker@example.com', role: 'seller' as const, ...input };
+    postMock.mockResolvedValue({ data: sellerUser });
+
+    await expect(registerSeller(input)).resolves.toEqual(sellerUser);
+    expect(postMock).toHaveBeenCalledWith('/seller/registration', { seller: input });
   });
 });

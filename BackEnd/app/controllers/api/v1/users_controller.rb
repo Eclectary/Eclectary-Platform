@@ -24,7 +24,7 @@ class Api::V1::UsersController < Api::V1::BaseController
     end
 
   def create
-    user = User.new(user_params)
+    user = User.new(user_params.merge(role: "customer"))
 
     if user.save
       render json: UserSerializer.new(user).as_json.merge(
@@ -49,20 +49,14 @@ class Api::V1::UsersController < Api::V1::BaseController
 
   private
 
-  # Public self-registration must never allow escalation to administrator.
+  # Public self-registration always creates a buyer account. Seller promotion
+  # is an authenticated flow with its own required shop information.
   def user_params
-    permitted = require_object_parameter(:user).permit(
+    require_object_parameter(:user).permit(
       :email,
       :password,
-      :password_confirmation,
-      :public_name,
-      :image_url,
-      :specialty,
-      :bio,
-      :role
+      :password_confirmation
     )
-    permitted[:role] = "customer" if permitted[:role] == "administrator"
-    permitted
   end
 
   def profile_params

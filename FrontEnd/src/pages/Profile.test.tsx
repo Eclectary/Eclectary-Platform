@@ -41,6 +41,7 @@ describe('Profile authenticated behavior', () => {
       loading: false,
       login: vi.fn(),
       register: vi.fn(),
+      becomeSeller: vi.fn(),
       logout,
     });
     const user = userEvent.setup();

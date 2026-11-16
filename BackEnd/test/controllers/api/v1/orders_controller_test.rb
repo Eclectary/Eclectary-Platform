@@ -195,6 +195,19 @@ class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_includes JSON.parse(response.body).fetch("errors").join, "unavailable"
   end
 
+  test "a pending product cannot be purchased" do
+    products(:one).update!(approval_status: "pending")
+    payload = valid_order_payload
+    payload[:order][:items] = [ { product_id: products(:one).id, quantity: 1 } ]
+
+    assert_no_difference [ -> { Order.count }, -> { OrderItem.count } ] do
+      post "/api/v1/orders", params: payload, headers: auth_headers
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body).fetch("errors").join, "unavailable"
+  end
+
   test "required customer and shipping fields are validated" do
     %i[customer_name customer_email customer_phone shipping_address shipping_city shipping_state shipping_postal_code].each do |field|
       payload = valid_order_payload

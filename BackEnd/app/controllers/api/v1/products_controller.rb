@@ -32,7 +32,7 @@ module Api
       end
 
       def show
-        product = Product.active.with_attached_images.find(params[:id])
+        product = Product.publicly_available.with_attached_images.find(params[:id])
 
         render json: {
           data: ProductSerializer.new(product).as_json
@@ -42,7 +42,7 @@ module Api
       private
 
       def filtered_products
-        products = Product.active
+        products = Product.publicly_available
           .left_joins(:seller, :category)
           .preload(:seller, :category, images_attachments: :blob)
 

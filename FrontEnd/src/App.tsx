@@ -16,6 +16,7 @@ import OrderConfirmation from "./pages/OrderConfirmation";
 import Orders from "./pages/Orders";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import BecomeSeller from "./pages/BecomeSeller";
 import Profile from "./pages/Profile";
 import AddProduct from "./pages/AddProduct";
 import EditProduct from "./pages/EditProduct";
@@ -174,6 +175,11 @@ function Products() {
             {sellerProducts.map((product) => (
               <article key={product.id}>
                 <ProductCard product={product} />
+                <p><strong>{product.approval_status === "pending"
+                  ? "Pending review"
+                  : product.approval_status === "rejected"
+                    ? "Changes requested"
+                    : "Approved"}</strong></p>
                 <p><strong>{product.active ? "Active" : "Inactive"}</strong></p>
                 <p><Link to={`/dashboard/products/${product.id}/edit`}>Edit</Link></p>
                 {product.active && (
@@ -228,6 +234,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/account/profile" element={<Profile />} />
             <Route path="/account/orders" element={<Orders />} />
+            <Route path="/account/become-seller" element={<BecomeSeller />} />
             <Route path="/checkout" element={<Checkout />} />
           </Route>
 

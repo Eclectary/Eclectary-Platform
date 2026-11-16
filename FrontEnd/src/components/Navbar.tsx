@@ -25,6 +25,20 @@ function Navbar() {
             </div>
 
             <div className="account-actions">
+                {isLoggedIn && user?.role === "customer" && (
+                    <Link to="/account/become-seller" className="action" title="Become a Seller" aria-label="Become a Seller">
+                        <span aria-hidden="true">✦</span>
+                        <span>Become a Seller</span>
+                    </Link>
+                )}
+
+                {isLoggedIn && user?.role === "seller" && (
+                    <Link to="/dashboard" className="action" title="Seller Dashboard" aria-label="Seller Dashboard">
+                        <span aria-hidden="true">✦</span>
+                        <span>Seller Dashboard</span>
+                    </Link>
+                )}
+
                 <Link
                     to={isLoggedIn ? "/account/profile" : "/account/login"}
                     className="action"

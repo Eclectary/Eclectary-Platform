@@ -1,6 +1,18 @@
 require "test_helper"
 
 class ProductTest < ActiveSupport::TestCase
+  test "approval status is constrained and public availability requires approval and active state" do
+    product = products(:one)
+    assert product.publicly_available?
+
+    product.approval_status = "pending"
+    assert_not product.publicly_available?
+
+    product.approval_status = "unsupported"
+    assert_not product.valid?
+    assert_includes product.errors[:approval_status], "is not included in the list"
+  end
+
   test "accepts supported image types" do
     product = products(:one)
     product.images.attach(

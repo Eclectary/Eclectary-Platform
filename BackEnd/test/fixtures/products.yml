@@ -4,6 +4,7 @@ one:
   price: 9.99
   seller_id: <%= ActiveRecord::FixtureSet.identify(:two) %>
   category_id: <%= ActiveRecord::FixtureSet.identify(:one) %>
+  approval_status: approved
 
 two:
   title: MyString Two
@@ -11,3 +12,4 @@ two:
   price: 19.99
   seller_id: <%= ActiveRecord::FixtureSet.identify(:two) %>
   category_id: <%= ActiveRecord::FixtureSet.identify(:two) %>
+  approval_status: approved

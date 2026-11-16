@@ -93,8 +93,11 @@ class Api::V1::CartMergesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ 3, 1, 1 ], skipped.map { |item| item["skipped_quantity"] }
   end
 
-  test "inactive and deleted products are skipped and valid products still merge" do
+  test "inactive pending and deleted products are skipped and valid products still merge" do
     products(:two).update!(active: false)
+    pending_product = Product.create!(
+      title: "Pending guest product", price: 5, seller: users(:two), category: categories(:one)
+    )
     deleted_product = Product.create!(
       title: "Deleted guest product", price: 5, seller: users(:two), category: categories(:one)
     )
@@ -103,6 +106,7 @@ class Api::V1::CartMergesControllerTest < ActionDispatch::IntegrationTest
 
     merge_cart([
       { product_id: products(:two).id, quantity: 2 },
+      { product_id: pending_product.id, quantity: 1 },
       { product_id: deleted_id, quantity: 1 },
       { product_id: products(:one).id, quantity: 2 }
     ])
@@ -111,8 +115,8 @@ class Api::V1::CartMergesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 3, cart_items(:one).reload.quantity
     assert_not carts(:one).cart_items.exists?(product: products(:two))
     skipped = response_body.dig("merge", "skipped_items")
-    assert_equal [ products(:two).id, deleted_id ], skipped.map { |item| item["product_id"] }
-    assert_equal [ "unavailable_product" ] * 2, skipped.map { |item| item["reason"] }
+    assert_equal [ products(:two).id, pending_product.id, deleted_id ], skipped.map { |item| item["product_id"] }
+    assert_equal [ "unavailable_product" ] * 3, skipped.map { |item| item["reason"] }
   end
 
   test "malformed entries and invalid quantities are reported without changing quantities" do

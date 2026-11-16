@@ -14,6 +14,18 @@ class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, body.fetch("pagination").fetch("total_pages")
   end
 
+  test "pending and rejected products are hidden from public list and detail" do
+    products(:one).update!(approval_status: "pending")
+    products(:two).update!(approval_status: "rejected")
+
+    get "/api/v1/products"
+    assert_response :success
+    assert_empty response.parsed_body.fetch("data")
+
+    get "/api/v1/products/#{products(:one).id}"
+    assert_response :not_found
+  end
+
   test "index filters by category and excludes other and inactive products" do
     inactive = create_product(category: categories(:one), title: "Inactive match", active: false)
 
@@ -82,7 +94,7 @@ class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
     get "/api/v1/products", params: { search: "   " }
 
     assert_response :success
-    assert_equal Product.active.count, JSON.parse(response.body).dig("pagination", "total")
+    assert_equal Product.publicly_available.count, JSON.parse(response.body).dig("pagination", "total")
   end
 
   test "index treats SQL wildcard characters as literals" do
@@ -172,7 +184,7 @@ class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
       pagination = JSON.parse(response.body).fetch("pagination")
       assert_equal 1, pagination.fetch("page")
       assert_equal 24, pagination.fetch("per_page")
-      assert_equal Product.active.count, pagination.fetch("total")
+      assert_equal Product.publicly_available.count, pagination.fetch("total")
       assert_equal 1, pagination.fetch("total_pages")
     end
   end
@@ -248,14 +260,16 @@ class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def create_product(title:, category: categories(:one), description: "Marketplace product", price: 15, active: true)
+  def create_product(title:, category: categories(:one), description: "Marketplace product", price: 15, active: true,
+    approval_status: "approved")
     Product.create!(
       title: title,
       description: description,
       price: price,
       seller: users(:two),
       category: category,
-      active: active
+      active: active,
+      approval_status: approval_status
     )
   end
 

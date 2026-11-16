@@ -125,7 +125,7 @@ module Api
           )
 
           items.each do |item|
-            product = Product.active.find_by(id: item[:product_id])
+            product = Product.publicly_available.find_by(id: item[:product_id])
             raise InvalidOrderItem, "Product #{item[:product_id]} is unavailable." unless product
 
             order.order_items.create!(

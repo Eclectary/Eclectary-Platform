@@ -84,6 +84,19 @@ class Api::V1::CartItemsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "pending products cannot be added and existing cart entries become unavailable" do
+    products(:one).update!(approval_status: "pending")
+
+    post "/api/v1/cart/items",
+      params: { item: { product_id: products(:one).id } },
+      headers: auth_headers
+    assert_response :unprocessable_entity
+
+    get "/api/v1/cart", headers: auth_headers
+    assert_response :success
+    assert_equal "unavailable", response.parsed_body.dig("data", "items", 0, "status")
+  end
+
   test "update and delete are scoped to the current user's cart" do
     owned_item_id = cart_items(:one).id
 

@@ -60,6 +60,7 @@ describe('Register authentication errors', () => {
       loading: false,
       login: vi.fn(),
       register,
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -80,6 +81,7 @@ describe('Register authentication errors', () => {
       loading: false,
       login: vi.fn(),
       register,
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -100,6 +102,7 @@ describe('Register authentication errors', () => {
       loading: false,
       login: vi.fn(),
       register,
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -121,6 +124,7 @@ describe('Register authentication errors', () => {
       loading: false,
       login: vi.fn(),
       register,
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();
@@ -141,6 +145,7 @@ describe('Register authentication errors', () => {
       loading: false,
       login: vi.fn(),
       register,
+      becomeSeller: vi.fn(),
       logout: vi.fn(),
     });
     const user = userEvent.setup();

@@ -6,6 +6,7 @@ export interface Product {
 	description?: string;
 	price: number;
 	active: boolean;
+	approval_status?: 'pending' | 'approved' | 'rejected';
 	image?: string | null;
 	images?: string[];
 	collection?: 'custom-printing' | 'purely-handmade' | 'digital-creations';

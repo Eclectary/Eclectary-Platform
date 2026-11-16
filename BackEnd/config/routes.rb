@@ -24,6 +24,7 @@ Rails.application.routes.draw do
       delete "cart/items", to: "cart_items#clear"
       resources :products, only: %i[index show]
       namespace :seller do
+        resource :registration, only: :create
         resources :products, only: %i[index show create update] do
           patch :deactivate, on: :member
         end

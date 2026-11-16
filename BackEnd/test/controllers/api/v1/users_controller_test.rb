@@ -128,12 +128,13 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     )
   end
 
-  test "registration fails with invalid role" do
+  test "registration ignores requested roles and always creates a customer" do
     post "/api/v1/users", params: {
       user: { email: "invalid_role@example.com", password: "password123", role: "superadmin" }
     }
 
-    assert_response :unprocessable_entity
+    assert_response :created
+    assert_equal "customer", User.find_by!(email: "invalid_role@example.com").role
   end
 
   test "registration cannot self-elevate to administrator" do
@@ -147,7 +148,7 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
 
   # --- Authentication on /me ---
 
-  test "seller registration accepts public profile fields" do
+  test "ordinary registration cannot bypass seller onboarding with shop fields" do
     post "/api/v1/users", params: {
       user: {
         email: "new_seller@example.com", password: "password123", role: "seller",
@@ -157,11 +158,12 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :created
-    seller = User.find_by!(email: "new_seller@example.com")
-    assert_equal "New Studio", seller.public_name
-    assert_equal "https://example.com/studio.jpg", seller.image_url
-    assert_equal "Textiles", seller.specialty
-    assert_equal "Handwoven goods.", seller.bio
+    customer = User.find_by!(email: "new_seller@example.com")
+    assert_equal "customer", customer.role
+    assert_nil customer.public_name
+    assert_nil customer.image_url
+    assert_nil customer.specialty
+    assert_nil customer.bio
   end
 
   test "me without a token is unauthorized" do

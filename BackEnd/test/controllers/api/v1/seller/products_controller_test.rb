@@ -59,12 +59,14 @@ class Api::V1::Seller::ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "New seller product", product.title
     assert_equal BigDecimal("24.95"), product.price
     assert product.active?
+    assert_equal "pending", product.approval_status
+    assert_equal "pending", JSON.parse(response.body).dig("data", "approval_status")
     assert_equal product.id, JSON.parse(response.body).dig("data", "id")
   end
 
   test "seller cannot choose ownership or initial active state" do
     params = valid_product_params
-    params[:product].merge!(seller_id: @other_seller.id, active: false)
+    params[:product].merge!(seller_id: @other_seller.id, active: false, approval_status: "approved")
 
     post "/api/v1/seller/products", params: params, headers: auth_headers
 
@@ -72,6 +74,54 @@ class Api::V1::Seller::ProductsControllerTest < ActionDispatch::IntegrationTest
     product = Product.order(:id).last
     assert_equal @seller, product.seller
     assert product.active?
+    assert_equal "pending", product.approval_status
+  end
+
+  test "material listing changes return approved and rejected products to pending review" do
+    changes = [
+      { title: "Reviewed title" },
+      { description: "Reviewed description" },
+      { price: "31.50" },
+      { category_id: categories(:two).id },
+      { subcategory: "Reviewed subcategory" }
+    ]
+
+    changes.each do |attributes|
+      product = products(:one)
+      product.update!(approval_status: "approved")
+
+      patch "/api/v1/seller/products/#{product.id}",
+        params: { product: attributes },
+        headers: auth_headers
+
+      assert_response :success
+      assert_equal "pending", product.reload.approval_status, "Expected #{attributes.keys.first} to trigger review"
+    end
+
+    product = products(:one)
+    product.update!(approval_status: "rejected")
+    patch "/api/v1/seller/products/#{product.id}",
+      params: { product: { title: "Corrected after review" } },
+      headers: auth_headers
+    assert_equal "pending", product.reload.approval_status
+  end
+
+  test "no-op updates and operational deactivation do not reset approval" do
+    product = products(:one)
+    product.update!(approval_status: "approved")
+
+    patch "/api/v1/seller/products/#{product.id}",
+      params: { product: { title: product.title, price: product.price.to_s } },
+      headers: auth_headers
+
+    assert_response :success
+    assert_equal "approved", product.reload.approval_status
+
+    patch "/api/v1/seller/products/#{product.id}/deactivate", headers: auth_headers
+
+    assert_response :success
+    assert_not product.reload.active?
+    assert_equal "approved", product.approval_status
   end
 
   test "invalid create returns validation errors without persistence" do
@@ -254,6 +304,7 @@ class Api::V1::Seller::ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal 2, product.reload.images.count
     assert_includes product.images.map(&:blob_id), existing_blob_id
+    assert_equal "pending", product.approval_status
   end
 
   test "ordinary field update preserves existing attachments" do

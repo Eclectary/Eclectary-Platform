@@ -149,7 +149,8 @@ ApplicationRecord.transaction do
       description: attributes.fetch(:description),
       price: BigDecimal(attributes.fetch(:price)),
       subcategory: attributes.fetch(:subcategory),
-      active: attributes.fetch(:active)
+      active: attributes.fetch(:active),
+      approval_status: "approved"
     )
     seeded_products[attributes.fetch(:key)] = product
   end

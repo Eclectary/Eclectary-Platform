@@ -33,7 +33,10 @@ module Api
         end
 
         def update
-          @product.assign_attributes(product_attributes)
+          @product.assign_seller_listing_changes(
+            product_attributes,
+            images_changed: uploaded_images.any?
+          )
           assign_images(@product, preserve_existing: true)
 
           if @product.save
