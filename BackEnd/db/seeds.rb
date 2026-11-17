@@ -1,19 +1,59 @@
 require "securerandom"
 
-categories = {
-  "ceramics-clay" => "Ceramics & Clay",
-  "candles-wax" => "Candles & Wax",
-  "fiber-arts-textiles" => "Fiber Arts & Textiles",
-  "handmade-art" => "Handmade Art",
-  "handmade-books-journals" => "Handmade Books & Journals"
-}.each_with_object({}) do |(slug, name), seeded_categories|
-  category = Category.find_or_initialize_by(slug: slug)
-  category.name = name
-  category.save!
-  seeded_categories[slug] = category
-end
+# Keep these slugs aligned with FrontEnd/src/data/categories.ts. Departments are
+# frontend metadata; Rails persists the established category slug and name.
+CATEGORY_DEFINITIONS = {
+  "jewelry-adornments" => { name: "Jewelry & Adornments", department: "purely-handmade" },
+  "divination" => { name: "Divination", department: "purely-handmade" },
+  "witchcraft-spellcraft" => { name: "Witchcraft & Spellcraft", department: "purely-handmade" },
+  "altar-sacred-goods" => { name: "Altar & Sacred Goods", department: "purely-handmade" },
+  "candles-wax" => { name: "Candles & Wax", department: "purely-handmade" },
+  "incense-aromatics" => { name: "Incense & Aromatics", department: "purely-handmade" },
+  "herbs-botanicals" => { name: "Herbs & Botanicals", department: "purely-handmade" },
+  "oils-perfume-blends" => { name: "Oils, Perfume & Blends", department: "purely-handmade" },
+  "bath-body" => { name: "Bath & Body", department: "purely-handmade" },
+  "fiber-arts-textiles" => { name: "Fiber Arts & Textiles", department: "purely-handmade" },
+  "wood-natural-materials" => { name: "Wood & Natural Materials", department: "purely-handmade" },
+  "ceramics-clay" => { name: "Ceramics & Clay", department: "purely-handmade" },
+  "resin-glass-mixed-media" => { name: "Resin, Glass & Mixed Media", department: "purely-handmade" },
+  "handmade-art" => { name: "Handmade Art", department: "purely-handmade" },
+  "handmade-books-journals" => { name: "Handmade Books & Journals", department: "purely-handmade" },
+  "clothing-wearables" => { name: "Clothing & Wearables", department: "purely-handmade" },
+  "home-decor" => { name: "Home & Décor", department: "purely-handmade" },
+  "crystals-gemstone-creations" => { name: "Crystals & Gemstone Creations", department: "purely-handmade" },
+  "handmade-gifts-sets" => { name: "Handmade Gifts & Sets", department: "purely-handmade" },
+  "custom-personalized-handmade" => { name: "Custom & Personalized Handmade", department: "purely-handmade" },
+  "digital-art" => { name: "Digital Art", department: "digital-creations" },
+  "grimoires-spiritual-journaling" => { name: "Grimoires & Spiritual Journaling", department: "digital-creations" },
+  "tarot-oracle-divination" => { name: "Tarot, Oracle & Divination", department: "digital-creations" },
+  "witchcraft-ritual" => { name: "Witchcraft & Ritual", department: "digital-creations" },
+  "astrology" => { name: "Astrology", department: "digital-creations" },
+  "patterns-craft-designs" => { name: "Patterns & Craft Designs", department: "digital-creations" },
+  "planners-organization" => { name: "Planners & Organization", department: "digital-creations" },
+  "ebooks-guides-education" => { name: "E-books, Guides & Education", department: "digital-creations" },
+  "digital-design-assets" => { name: "Digital Design Assets", department: "digital-creations" },
+  "printable-resources" => { name: "Printable Resources", department: "digital-creations" },
+  "spiritual-metaphysical-resources" => { name: "Spiritual & Metaphysical Resources", department: "digital-creations" },
+  "digital-templates" => { name: "Digital Templates", department: "digital-creations" },
+  "custom-digital-creations" => { name: "Custom Digital Creations", department: "digital-creations" },
+  "custom-apparel" => { name: "Apparel & Wearables", department: "custom-printing" },
+  "custom-jewelry-accessories" => { name: "Jewelry & Accessories", department: "custom-printing" },
+  "custom-art-prints-wall-decor" => { name: "Art Prints & Wall Décor", department: "custom-printing" },
+  "custom-stickers-decals" => { name: "Stickers & Decals", department: "custom-printing" },
+  "custom-stationery-paper-goods" => { name: "Stationery & Paper Goods", department: "custom-printing" },
+  "custom-books-publications" => { name: "Books & Printed Publications", department: "custom-printing" },
+  "custom-home-living" => { name: "Home & Living", department: "custom-printing" },
+  "custom-bags-carriers" => { name: "Bags & Carriers", department: "custom-printing" },
+  "custom-phone-tech-accessories" => { name: "Phone & Tech Accessories", department: "custom-printing" },
+  "custom-spiritual-ritual-printing" => { name: "Spiritual & Ritual Printing", department: "custom-printing" },
+  "custom-artist-creator-merchandise" => { name: "Artist & Creator Merchandise", department: "custom-printing" },
+  "custom-personalized-gifts" => { name: "Personalized Gifts", department: "custom-printing" },
+  "custom-invitations-event-goods" => { name: "Invitations & Event Goods", department: "custom-printing" },
+  "custom-seasonal-holiday-printing" => { name: "Seasonal & Holiday Printing", department: "custom-printing" },
+  "custom-printing" => { name: "Custom Printing", department: "custom-printing" }
+}.freeze
 
-makers = [
+DEMO_SELLER_DEFINITIONS = [
   {
     key: "moss-atelier",
     email: "seed-moss-atelier@eclectary.test",
@@ -37,93 +77,253 @@ makers = [
     specialty: "Art prints & botanicals",
     bio: "Pressed floral work, thoughtful stationery, and tactile keepsakes.",
     image_url: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "moonwell-studio",
+    email: "seed-moonwell-studio@eclectary.test",
+    name: "Moonwell Studio",
+    specialty: "Divination & journaling",
+    bio: "Oracle tools, reflective cards, and guided rituals for intuitive living.",
+    image_url: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "quiet-bloom",
+    email: "seed-quiet-bloom@eclectary.test",
+    name: "The Quiet Bloom",
+    specialty: "Self-care rituals",
+    bio: "Bath blends, grounding routines, and gentle care essentials.",
+    image_url: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "rooted-co",
+    email: "seed-rooted-co@eclectary.test",
+    name: "Rooted & Co.",
+    specialty: "Kitchen & home rituals",
+    bio: "Practical objects with a grounded, natural point of view.",
+    image_url: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "ink-and-orbit",
+    email: "seed-ink-and-orbit@eclectary.test",
+    name: "Ink & Orbit",
+    specialty: "Stationery & paper goods",
+    bio: "Illustrated notebooks and correspondence pieces for curious minds.",
+    image_url: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "solstice-scent",
+    email: "seed-solstice-scent@eclectary.test",
+    name: "Solstice Scent",
+    specialty: "Candles & fragrance",
+    bio: "Small-batch scents inspired by changing light, weather, and place.",
+    image_url: "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "wild-fig-press",
+    email: "seed-wild-fig-press@eclectary.test",
+    name: "Wild Fig Press",
+    specialty: "Printmaking & illustration",
+    bio: "Limited-run linocuts and paper art with a little woodland wonder.",
+    image_url: "https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    key: "kindred-keepsakes",
+    email: "seed-kindred-keepsakes@eclectary.test",
+    name: "Kindred Keepsakes",
+    specialty: "Gifts & personalized goods",
+    bio: "Meaningful mementos made for milestones, memories, and everyday joy.",
+    image_url: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=1200&q=80"
   }
-].each_with_object({}) do |maker, seeded_makers|
-  seller = User.find_or_initialize_by(email: maker[:email])
-  if seller.persisted? && !seller.seller?
-    raise "Seed maker email #{maker[:email]} belongs to a non-seller; refusing to change that account."
+].freeze
+
+# `key` is the stable demo identifier and matches the product image basename.
+# Department is recorded here for consistency checks; the category slug supplies
+# the persisted Rails relationship used by the frontend to derive department.
+DEMO_PRODUCT_DEFINITIONS = [
+  {
+    key: "moonlit-clay-mug", title: "Moonlit Clay Mug",
+    description: "A hand-thrown stoneware mug with a soft, moonlit glaze, made for slow mornings and evening tea.",
+    price: 34.00, maker: "moss-atelier", department: "purely-handmade",
+    category: "ceramics-clay", subcategory: "Other Ceramic & Clay Creations"
+  },
+  {
+    key: "botanical-candle-set", title: "Botanical Candle Set",
+    description: "A small-batch pair of botanical-scented candles for a calm, welcoming home.",
+    price: 28.00, maker: "hearth-thread", department: "purely-handmade",
+    category: "candles-wax", subcategory: "Candle Sets"
+  },
+  {
+    key: "celestial-journal", title: "Celestial Journal",
+    description: "A thoughtfully designed digital journal for reflection, planning, and following the cycles that matter.",
+    price: 24.00, maker: "petal-foundry", department: "digital-creations",
+    category: "planners-organization", subcategory: "Digital Planners"
+  },
+  {
+    key: "pressed-herb-bundle", title: "Pressed Herb Bundle",
+    description: "A carefully arranged bundle of pressed botanicals, gathered as a nature-inspired keepsake.",
+    price: 18.00, maker: "petal-foundry", department: "purely-handmade",
+    category: "herbs-botanicals", subcategory: "Herb Bundles"
+  },
+  {
+    key: "amber-glass-tumbler", title: "Amber Glass Tumbler",
+    description: "Artist-designed amber drinkware made to bring a warm, grounded note to everyday rituals.",
+    price: 26.00, maker: "moss-atelier", department: "custom-printing",
+    category: "custom-home-living", subcategory: "Tumblers"
+  },
+  {
+    key: "sage-linen-throw", title: "Sage Linen Throw",
+    description: "A softly textured linen throw in a muted sage tone, woven for everyday comfort.",
+    price: 58.00, maker: "hearth-thread", department: "purely-handmade",
+    category: "fiber-arts-textiles", subcategory: "Textile Wearables"
+  },
+  {
+    key: "wildflower-press-set", title: "Wildflower Press Set",
+    description: "A set of botanical art prints featuring delicate wildflower forms for a bright, thoughtful space.",
+    price: 32.00, maker: "petal-foundry", department: "custom-printing",
+    category: "custom-art-prints-wall-decor", subcategory: "Art Prints"
+  },
+  {
+    key: "oracle-card-deck", title: "Oracle Card Deck",
+    description: "A digital oracle deck created for intuitive prompts, personal rituals, and reflective practice.",
+    price: 22.00, maker: "moonwell-studio", department: "digital-creations",
+    category: "tarot-oracle-divination", subcategory: "Digital Oracle Decks"
+  },
+  {
+    key: "lavender-bath-ritual", title: "Lavender Bath Ritual",
+    description: "A calming handmade bath blend centered on lavender and a gentler end-of-day rhythm.",
+    price: 40.00, maker: "quiet-bloom", department: "purely-handmade",
+    category: "bath-body", subcategory: "Ritual Bath Blends"
+  },
+  {
+    key: "hanging-herb-drying-kit", title: "Hanging Herb Drying Kit",
+    description: "A practical handmade kit for gathering, hanging, and drying favorite kitchen herbs.",
+    price: 44.00, maker: "rooted-co", department: "purely-handmade",
+    category: "herbs-botanicals", subcategory: "Herb Bundles"
+  },
+  {
+    key: "whispering-journal", title: "Whispering Journal",
+    description: "Digital journal pages with spacious prompts for shadow work, reflection, and quiet observation.",
+    price: 19.00, maker: "ink-and-orbit", department: "digital-creations",
+    category: "grimoires-spiritual-journaling", subcategory: "Digital Journal Pages"
+  },
+  {
+    key: "terracotta-candle-trio", title: "Terracotta Candle Trio",
+    description: "Three small-batch candles in warm terracotta tones for seasonal tables and welcoming spaces.",
+    price: 36.00, maker: "solstice-scent", department: "purely-handmade",
+    category: "candles-wax", subcategory: "Candle Sets"
+  }
+].freeze
+
+demo_seller_keys = DEMO_SELLER_DEFINITIONS.map { |definition| definition.fetch(:key) }
+demo_seller_emails = DEMO_SELLER_DEFINITIONS.map { |definition| definition.fetch(:email) }
+demo_product_keys = DEMO_PRODUCT_DEFINITIONS.map { |definition| definition.fetch(:key) }
+
+raise "Expected exactly 48 marketplace categories." unless CATEGORY_DEFINITIONS.size == 48
+raise "Expected exactly 10 demo sellers." unless DEMO_SELLER_DEFINITIONS.size == 10
+raise "Demo seller keys must be unique." unless demo_seller_keys.uniq.size == demo_seller_keys.size
+raise "Demo seller emails must be unique." unless demo_seller_emails.uniq.size == demo_seller_emails.size
+unless demo_seller_emails.all? { |email| email.match?(/\Aseed-[a-z0-9-]+@eclectary\.test\z/) }
+  raise "Demo sellers must use reserved seed accounts in the eclectary.test domain."
+end
+raise "Expected exactly 12 demo products." unless DEMO_PRODUCT_DEFINITIONS.size == 12
+raise "Demo product keys must be unique." unless demo_product_keys.uniq.size == demo_product_keys.size
+
+DEMO_PRODUCT_DEFINITIONS.each do |definition|
+  key = definition.fetch(:key)
+  raise "Demo product #{key} references an unknown demo seller." unless demo_seller_keys.include?(definition.fetch(:maker))
+
+  category_definition = CATEGORY_DEFINITIONS.fetch(definition.fetch(:category))
+  unless category_definition.fetch(:department) == definition.fetch(:department)
+    raise "Demo product #{key} has a category outside its department."
   end
 
-  seller.role = "seller"
-  seller.public_name = maker[:name]
-  seller.specialty = maker[:specialty]
-  seller.bio = maker[:bio]
-  seller.image_url = maker[:image_url]
-  unless seller.persisted?
-    password = SecureRandom.hex(32)
-    seller.password = password
-    seller.password_confirmation = password
-  end
-  seller.save!
-  seeded_makers[maker[:key]] = seller
+  image_path = Rails.root.join("public", "product-images", "#{key}.png")
+  raise "Missing demo product image: #{image_path}" unless image_path.file?
 end
 
-products = [
-  {
-    title: "Moonlit Clay Mug",
-    description: "A hand-thrown stoneware mug with a soft, moonlit glaze, made for slow mornings and evening tea.",
-    price: 34.00,
-    maker: "moss-atelier",
-    category: "ceramics-clay",
-    image: "moonlit-clay-mug.png"
-  },
-  {
-    title: "Botanical Candle Set",
-    description: "A small-batch pair of botanical-scented candles for a calm, welcoming home.",
-    price: 28.00,
-    maker: "hearth-thread",
-    category: "candles-wax",
-    image: "botanical-candle-set.png"
-  },
-  {
-    title: "Sage Linen Throw",
-    description: "A softly textured linen throw in a muted sage tone, woven for everyday comfort.",
-    price: 58.00,
-    maker: "hearth-thread",
-    category: "fiber-arts-textiles",
-    image: "sage-linen-throw.png"
-  },
-  {
-    title: "Pressed Herb Bundle",
-    description: "A carefully arranged bundle of pressed botanicals, gathered as a nature-inspired keepsake.",
-    price: 18.00,
-    maker: "petal-foundry",
-    category: "handmade-art",
-    image: "pressed-herb-bundle.png"
-  },
-  {
-    title: "Wildflower Press Set",
-    description: "A set of botanical art prints featuring delicate wildflower forms for a bright, thoughtful space.",
-    price: 32.00,
-    maker: "petal-foundry",
-    category: "handmade-art",
-    image: "wildflower-press-set.png"
-  },
-  {
-    title: "Celestial Journal",
-    description: "A thoughtfully bound journal with a celestial-inspired cover for notes, sketches, and reflection.",
-    price: 24.00,
-    maker: "petal-foundry",
-    category: "handmade-books-journals",
-    image: "celestial-journal.png"
-  }
-].each do |attributes|
-  product = Product.find_or_initialize_by(title: attributes[:title])
-  product.description = attributes[:description]
-  product.price = attributes[:price]
-  product.seller = makers.fetch(attributes[:maker])
-  product.category = categories.fetch(attributes[:category])
-  product.approval_status = "approved"
-  product.save!
+demo_product_image_targets = ApplicationRecord.transaction do
+  categories = CATEGORY_DEFINITIONS.each_with_object({}) do |(slug, definition), seeded_categories|
+    category = Category.find_or_initialize_by(slug: slug)
+    category.name = definition.fetch(:name)
+    category.save!
+    seeded_categories[slug] = category
+  end
 
-  unless product.images.attached?
-    image_path = Rails.root.join("public", "product-images", attributes[:image])
-    File.open(image_path, "rb") do |image|
-      product.images.attach(
-        io: image,
-        filename: attributes[:image],
-        content_type: "image/png"
-      )
+  demo_sellers = DEMO_SELLER_DEFINITIONS.each_with_object({}) do |definition, seeded_sellers|
+    seller = User.find_or_initialize_by(email: definition.fetch(:email))
+    if seller.persisted? && !seller.seller?
+      raise "Demo seller email #{definition.fetch(:email)} belongs to a non-seller; refusing to change that account."
     end
+
+    seller.role = "seller"
+    seller.public_name = definition.fetch(:name)
+    seller.specialty = definition.fetch(:specialty)
+    seller.bio = definition.fetch(:bio)
+    seller.image_url = definition.fetch(:image_url)
+    unless seller.persisted?
+      password = SecureRandom.hex(32)
+      seller.password = password
+      seller.password_confirmation = password
+    end
+    seller.save!
+    seeded_sellers[definition.fetch(:key)] = seller
+  end
+
+  DEMO_PRODUCT_DEFINITIONS.map do |definition|
+    seller = demo_sellers.fetch(definition.fetch(:maker))
+    image_filename = "#{definition.fetch(:key)}.png"
+    image_path = Rails.root.join("public", "product-images", image_filename)
+
+    # The reserved seller and persisted image filename are the stable demo identity.
+    product = seller.products.with_attached_images.detect do |candidate|
+      candidate.images.any? { |image| image.filename.to_s == image_filename }
+    end
+    product ||= seller.products.build
+
+    product.assign_attributes(
+      title: definition.fetch(:title),
+      description: definition.fetch(:description),
+      price: definition.fetch(:price),
+      category: categories.fetch(definition.fetch(:category)),
+      subcategory: definition.fetch(:subcategory),
+      active: true,
+      approval_status: "approved"
+    )
+    product.save!
+
+    {
+      product_id: product.id,
+      image_filename: image_filename,
+      image_path: image_path
+    }
+  end
+end
+
+demo_product_image_targets.each do |target|
+  product = Product.with_attached_images.find(target.fetch(:product_id))
+  image_filename = target.fetch(:image_filename)
+  matching_images = product.images.select { |image| image.filename.to_s == image_filename }
+  stored_image = matching_images.find { |image| image.blob.service.exist?(image.blob.key) }
+
+  unless stored_image
+    File.open(target.fetch(:image_path), "rb") do |image|
+      if matching_images.any?
+        matching_images.first.blob.upload(image)
+      else
+        product.images.attach(
+          io: image,
+          filename: image_filename,
+          content_type: "image/png"
+        )
+      end
+    end
+  end
+
+  product.reload
+  stored_image = product.images.find do |image|
+    image.filename.to_s == image_filename && image.blob.service.exist?(image.blob.key)
+  end
+  unless stored_image
+    raise "Failed to store demo product image in Active Storage: #{image_filename}"
   end
 end

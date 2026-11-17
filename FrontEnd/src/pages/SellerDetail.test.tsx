@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AxiosError, AxiosHeaders } from 'axios';
 
+import { AuthProvider } from '../context/AuthContext';
+import { CartProvider } from '../context/CartContext';
 import { WishlistProvider } from '../context/WishlistContext';
 import { getPublicSellerById } from '../services/sellerApi';
 import { getProducts } from '../services/productApi';
@@ -24,14 +26,20 @@ const notFoundError = new AxiosError('Not found', '404', undefined, undefined, {
 function renderShop(id = '42') {
   return render(
     <MemoryRouter initialEntries={[`/seller/${id}`]}>
-      <WishlistProvider>
-        <Routes><Route path="/seller/:id" element={<SellerDetail />} /></Routes>
-      </WishlistProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <Routes><Route path="/seller/:id" element={<SellerDetail />} /></Routes>
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
     </MemoryRouter>,
   );
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   getSellerMock.mockReset();
   getProductsMock.mockReset();
   getSellerMock.mockResolvedValue(seller);

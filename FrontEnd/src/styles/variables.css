@@ -51,6 +51,7 @@
   /* Brand aliases */
   --bg: var(--beige-100);
   --surface: var(--neutral-0);
+  --surface-warm: #F8F3EA;
   --color-primary: var(--purple-800);
   --color-primary-2: var(--purple-400);
   --color-accent: var(--beige-400);

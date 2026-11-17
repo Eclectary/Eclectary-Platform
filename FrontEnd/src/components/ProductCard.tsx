@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 
+import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import StarRating from './StarRating';
 import ProductImage from './ProductImage';
@@ -11,8 +13,13 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product }: ProductCardProps) {
+  const { addItem, canModifyCart, mutationLoading, mutationError } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
+  const [addAttempted, setAddAttempted] = useState(false);
   const isSaved = isWishlisted(product.id);
+  const isPurchasable = product.active && (
+    product.approval_status === undefined || product.approval_status === 'approved'
+  );
 
   return (
     <article className="product-card">
@@ -39,14 +46,7 @@ function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <div className="product-card__content">
-        <div className="product-card__meta">
-          {product.tag && <span className="product-card__tag">{product.tag}</span>}
-          <StarRating
-            className="product-card__rating"
-            rating={product.rating}
-            reviewCount={product.reviewCount}
-          />
-        </div>
+        {product.tag && <span className="product-card__tag">{product.tag}</span>}
 
         <Link to={`/product/${product.id}`} className="product-card__title-link">
           <h3>{product.title}</h3>
@@ -54,12 +54,37 @@ function ProductCard({ product }: ProductCardProps) {
 
         <p className="product-card__creator">by {product.creator}</p>
 
+        <StarRating
+          className="product-card__rating"
+          rating={product.rating}
+          reviewCount={product.reviewCount}
+        />
+
         <div className="product-card__footer">
           <span className="product-card__price">${product.price.toFixed(2)}</span>
-          <Link to={`/product/${product.id}`} className="product-card__cta">
-            View item
-          </Link>
+          {isPurchasable ? (
+            <button
+              type="button"
+              className="product-card__cta"
+              disabled={!canModifyCart}
+              aria-label={`Add ${product.title} to cart`}
+              aria-busy={addAttempted && mutationLoading}
+              onClick={() => {
+                setAddAttempted(true);
+                addItem(product);
+              }}
+            >
+              {addAttempted && mutationLoading ? 'Adding...' : 'Add to Cart'}
+            </button>
+          ) : (
+            <Link to={`/product/${product.id}`} className="product-card__cta">
+              View item
+            </Link>
+          )}
         </div>
+        {addAttempted && mutationError && (
+          <p className="product-card__cart-error" role="alert">{mutationError}</p>
+        )}
       </div>
     </article>
   );

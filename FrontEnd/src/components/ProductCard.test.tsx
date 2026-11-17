@@ -1,10 +1,12 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import ProductCard from '../components/ProductCard';
 import type { Product } from '../types/product';
 import { WishlistProvider } from '../context/WishlistContext';
+import { AuthProvider } from '../context/AuthContext';
+import { CartProvider } from '../context/CartContext';
 import api from '../services/api';
 import { getProducts } from '../services/productApi';
 
@@ -30,9 +32,13 @@ const mockProduct: Product = {
 const renderProductCard = (product: Product = mockProduct) => {
   return render(
     <BrowserRouter>
-      <WishlistProvider>
-        <ProductCard product={product} />
-      </WishlistProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ProductCard product={product} />
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
     </BrowserRouter>,
   );
 };
@@ -40,6 +46,8 @@ const renderProductCard = (product: Product = mockProduct) => {
 describe('ProductCard', () => {
   beforeEach(() => {
     getMock.mockReset();
+    window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   it('renders a Rails-shaped product after API normalization', async () => {
@@ -154,15 +162,36 @@ describe('ProductCard', () => {
     expect(removedBtn).toHaveTextContent('♥');
   });
 
-  it('should have View item link in footer', () => {
+  it('adds an active product to the cart and keeps product-detail links', async () => {
+    const user = userEvent.setup();
     renderProductCard();
 
-    const viewItemLink = screen.getByRole('link', {
-      name: /View item/i,
-    });
+    const addButton = screen.getByRole('button', { name: 'Add Test Mug to cart' });
+    await waitFor(() => expect(addButton).toBeEnabled());
+    await user.click(addButton);
 
-    expect(viewItemLink).toBeInTheDocument();
-    expect(viewItemLink).toHaveAttribute('href', '/product/1');
+    await waitFor(() => {
+      const cartItems = JSON.parse(window.localStorage.getItem('eclectary-cart') ?? '[]');
+      expect(cartItems).toEqual([
+        expect.objectContaining({ productId: 1, quantity: 1 }),
+      ]);
+    });
+    expect(screen.getAllByRole('link').some((link) => link.getAttribute('href') === '/product/1'))
+      .toBe(true);
+  });
+
+  it('keeps inactive products viewable without offering direct add-to-cart', () => {
+    renderProductCard({ ...mockProduct, active: false });
+
+    expect(screen.getByRole('link', { name: 'View item' })).toHaveAttribute('href', '/product/1');
+    expect(screen.queryByRole('button', { name: 'Add Test Mug to cart' })).not.toBeInTheDocument();
+  });
+
+  it('does not offer direct add-to-cart for products pending approval', () => {
+    renderProductCard({ ...mockProduct, approval_status: 'pending' });
+
+    expect(screen.getByRole('link', { name: 'View item' })).toHaveAttribute('href', '/product/1');
+    expect(screen.queryByRole('button', { name: 'Add Test Mug to cart' })).not.toBeInTheDocument();
   });
 
   it('should format price correctly', () => {
