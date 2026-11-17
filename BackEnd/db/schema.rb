@@ -126,7 +126,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_180000) do
     t.index ["active", "approval_status"], name: "index_products_on_active_and_approval_status"
     t.index ["category_id"], name: "index_products_on_category_id"
     t.index ["seller_id"], name: "index_products_on_seller_id"
-    t.check_constraint "approval_status::text = ANY (ARRAY['pending'::character varying::text, 'approved'::character varying::text, 'rejected'::character varying::text])", name: "products_approval_status_valid"
+    t.check_constraint "approval_status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying]::text[])", name: "products_approval_status_valid"
   end
 
   create_table "users", force: :cascade do |t|

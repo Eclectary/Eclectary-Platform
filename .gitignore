@@ -39,3 +39,8 @@ BackEnd/log/*
 
 FeedLog/.data
 /eclectary-backend/
+
+# Local PostgreSQL backups
+BackEnd/db/backups/
+*.dump
+*.sql.gz
