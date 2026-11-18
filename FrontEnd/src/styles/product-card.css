@@ -2,18 +2,21 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #f8f3ea;
-  border: 0;
-  border-radius: 16px;
+  background: linear-gradient(145deg, #FFFCF7 0%, #F8F1E7 100%);
+  border: none;
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(61, 15, 53, 0.14);
+  box-shadow:
+    0 5px 12px rgba(77, 51, 35, 0.12),
+    0 2px 4px rgba(77, 51, 35, 0.05);
   font-family: var(--font-body);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.product-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(88, 23, 76, 0.14);
+.product-card:hover,
+.product-card:focus-within {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(88, 23, 76, 0.12);
 }
 
 .product-card__image-shell {
@@ -97,12 +100,12 @@
 
 .product-card__content {
   display: flex;
-  flex: 1;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
-  min-height: 224px;
-  padding: 12px 14px 14px;
+  gap: 4px;
+  min-height: 0;
+  padding:10px;
 }
 
 .product-card__tag {
@@ -131,21 +134,23 @@
 
 .product-card__title-link h3 {
   margin: 0;
-  color: var(--color-primary);
+  color: #21191D;
   font-family: var(--font-heading);
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.3;
   display: -webkit-box;
-  min-height: 2.6em;
+  min-height: 0;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .product-card__creator {
   margin: 0;
-  color: var(--neutral-600);
+  color: #30262C;
   font-size: 0.78rem;
   line-height: 1.4;
 }
@@ -154,16 +159,16 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
-  margin-top: auto;
-  padding-top: 2px;
+  margin-top: 4px;
+  padding-top: 0;
 }
 
 .product-card__price {
-  color: var(--color-primary);
+  color: #58174C;
   font-family: var(--font-heading);
-  font-size: 1.45rem;
+  font-size: 1.5rem;
   font-weight: 700;
 }
 
@@ -191,7 +196,7 @@
 }
 
 .product-card__cta:hover:not(:disabled) {
-  background: var(--purple-900);
+  background: linear-gradient(110deg, #6B2058, #8B315F);
   transform: translateY(-1px);
   text-decoration: none;
 }
@@ -209,8 +214,8 @@
 
 @media (max-width: 600px) {
   .product-card__content {
-    gap: 5px;
-    min-height: 194px;
+    gap: 4px;
+    min-height: 0;
     padding: 10px;
   }
 
@@ -274,4 +279,55 @@
   .product-card:focus-within .product-card__image {
     transform: none;
   }
+}
+
+
+/* Eclectary Featured Creations: warm boutique palette */
+
+.product-card {
+  background: linear-gradient(145deg, #F5E8D5 0%, #EAD8C2 100%);
+  border: 1px solid #D9C2AA;
+  border-radius: 18px;
+  box-shadow: 0 5px 14px rgba(75, 43, 55, 0.16);
+}
+
+.product-card__title-link h3 {
+  color: #30202A;
+}
+
+.product-card__creator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #574650;
+}
+
+.product-card__creator svg {
+  flex-shrink: 0;
+  color: #58174C;
+}
+
+.product-card__price {
+  color: #58174C;
+}
+
+.product-card .star-rating__filled {
+  color: #E6A23C;
+}
+
+.product-card__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(110deg, #58174C, #82345F);
+  color: #FFFFFF;
+}
+
+.product-card__cta svg {
+  flex-shrink: 0;
+}
+
+.product-card__cta:hover:not(:disabled) {
+  background: linear-gradient(110deg, #6B2058, #963D70);
 }
