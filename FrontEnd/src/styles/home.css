@@ -929,36 +929,3 @@
     font-size: 1.2rem;
   }
 }
-
-/* Compact homepage product grid */
-.legacy-home .home-product-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  justify-content: start;
-  align-items: start;
-  gap: 16px;
-}
-
-.legacy-home .product-card {
-  width: 100%;
-  height: auto;
-  align-self: start;
-}
-
-@media (max-width: 1200px) {
-  .legacy-home .home-product-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 900px) {
-  .legacy-home .home-product-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .legacy-home .home-product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-}
