@@ -26,7 +26,7 @@
 .product-card__image-wrap {
   display: block;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1.15 / 1;
   overflow: hidden;
 }
 
@@ -100,12 +100,12 @@
 
 .product-card__content {
   display: flex;
-  flex: 0 0 auto;
+  flex: 1;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
   min-height: 0;
-  padding:10px;
+  padding: 10px;
 }
 
 .product-card__tag {
@@ -161,7 +161,7 @@
   align-items: start;
   gap: 5px;
   width: 100%;
-  margin-top: 4px;
+  margin-top: auto;
   padding-top: 0;
 }
 
@@ -285,8 +285,12 @@
 /* Eclectary Featured Creations: warm boutique palette */
 
 .product-card {
-  background: linear-gradient(145deg, #F5E8D5 0%, #EAD8C2 100%);
-  border: 1px solid #D9C2AA;
+  background: linear-gradient(
+    145deg,
+    #FFFCF7 0%,
+    #FFF9F1 100%
+  );
+  border: none;
   border-radius: 18px;
   box-shadow: 0 5px 14px rgba(75, 43, 55, 0.16);
 }

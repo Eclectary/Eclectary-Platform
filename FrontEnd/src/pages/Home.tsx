@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import customPrinting from '../assets/images/custom-printing.png';
 import digitalCreations from '../assets/images/digital-creations.png';
 import purelyHandmade from '../assets/images/purely-handmade.png';
-import heroBanner from '../assets/images/herobanner3.png';
+import heroBanner from '../assets/images/eclectary hero banner.png';
 import logo from '../assets/images/eclectary logo nb.png';
 import SellerCard from '../components/SellerCard';
 import ProductCard from '../components/ProductCard';
@@ -141,46 +141,133 @@ function Home() {
 
   return (
     <div className="legacy-home">
-      <div className="legacy-search-container">
-        <div className="home-bottom-nav" aria-label="Home quick navigation">
-          <Link className="home-bottom-nav__brand" to="/" aria-label="Eclectary home">
+        <nav className="home-bottom-nav" aria-label="Eclectary navigation">
+          <Link
+            className="home-bottom-nav__brand"
+            to="/"
+            aria-label="Eclectary home"
+          >
             <img src={logo} alt="Eclectary" />
           </Link>
 
-          <label className="legacy-search-bar home-bottom-nav__search">
-            <span className="legacy-search-icon" aria-hidden="true">✦</span>
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search creations, creators, ideas..."
-              aria-label="Search creations, creators, ideas"
-            />
-          </label>
+          <div className="home-bottom-nav__links">
+            <Link to="/shop">Shop</Link>
+            <a href="#meet-the-makers">Meet the Makers</a>
+            <Link to="/about">About</Link>
+          </div>
 
           <div className="home-bottom-nav__actions">
+            {user?.role !== 'administrator' && (
+              <Link
+                to={isLoggedIn && user?.role === 'seller'
+                  ? '/dashboard'
+                  : '/account/become-seller'}
+                className="home-bottom-nav__action"
+                title={isLoggedIn && user?.role === 'seller'
+                  ? 'Seller Dashboard'
+                  : 'Become a Seller'}
+                aria-label={isLoggedIn && user?.role === 'seller'
+                  ? 'Seller Dashboard'
+                  : 'Become a Seller'}
+              >
+              
+                <svg
+                  width="32"
+                  height="32"
+                  style={{ width: '32px', height: '32px', flexShrink: 0 }}
+                  viewBox="0 0 48 48"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M9 20V40H39V20" />
+                  <path d="M10 9H38L42 19H6L10 9Z" />
+                  <path d="M6 19C6 23 12 23 12 19C12 23 18 23 18 19C18 23 24 23 24 19C24 23 30 23 30 19C30 23 36 23 36 19C36 23 42 23 42 19" />
+                  <path d="M16 40V27H32V40" />
+                  <path d="M16 32H32" />
+                  <path d="M24 27V40" />
+                </svg>
+
+              </Link>
+            )}
+            {isLoggedIn && (
+              <>
+                <Link
+                  to="/favorites"
+                  className="home-bottom-nav__action"
+                  title="Favorites"
+                  aria-label="Favorites"
+                >
+                  <span aria-hidden="true">♡</span>
+                </Link>
+
+                <Link
+                  to="/cart"
+                  className="home-bottom-nav__action"
+                  title="Cart"
+                  aria-label="Cart"
+                >
+                  <span aria-hidden="true">🛒</span>
+                  {totalItems > 0 && <span>{totalItems}</span>}
+                </Link>
+              </>
+            )}
+
             <Link
               to={isLoggedIn ? '/account/profile' : '/account/login'}
-              className="home-bottom-nav__action"
-              title={isLoggedIn ? 'Profile' : 'Login'}
-              aria-label={isLoggedIn ? 'Profile' : 'Login'}
+              className="home-bottom-nav__action home-bottom-nav__login"
+              title={isLoggedIn ? 'My Account' : 'Login'}
+              aria-label={isLoggedIn ? 'My Account' : 'Login'}
             >
-              <span aria-hidden="true">♙</span>
-              <span>{isLoggedIn ? 'Profile' : 'Login'}</span>
+              <span>{isLoggedIn ? 'My Account' : 'Login'}</span>
             </Link>
 
-            <Link to="/cart" className="home-bottom-nav__action" title="Cart" aria-label="Cart">
-              <span aria-hidden="true">🛒</span>
-              <span>{totalItems > 0 ? `Cart (${totalItems})` : 'Cart'}</span>
-            </Link>
           </div>
-        </div>
-      </div>
+        </nav>
+
+        <section className="legacy-hero-banner" aria-label="Eclectary introduction">
+        <img src={heroBanner} alt="Find what calls to you and discover creations made with passion." />
+      </section>
 
       <section className="legacy-category-banner" aria-label="Browse Eclectary collections">
         <Link to="/shop?collection=custom-printing"><img src={customPrinting} alt="Custom Printing" /></Link>
         <Link to="/shop?collection=purely-handmade"><img src={purelyHandmade} alt="Purely Handmade" /></Link>
         <Link to="/shop?collection=digital-creations"><img src={digitalCreations} alt="Digital Creations" /></Link>
+      </section>
+      
+
+      <section className="home-discovery-search" aria-labelledby="discovery-heading">
+        <h2 id="discovery-heading">Discover Something Special</h2>
+        <p>Explore unique creations from independent makers.</p>
+
+        <div className="home-discovery-search__bar">
+          <span className="home-discovery-search__icon" aria-hidden="true">
+            ⌕
+          </span>
+
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search handmade, digital & more..."
+            aria-label="Search creations, creators, ideas"
+          />
+
+          <button
+            type="button"
+            onClick={() => {
+              document.querySelector('.home-search-results')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+              });
+            }}
+          >
+            Search
+          </button>
+        </div>
       </section>
 
       {normalizedSearch && (
@@ -208,10 +295,6 @@ function Home() {
           )}
         </section>
       )}
-
-      <section className="legacy-hero-banner" aria-label="Eclectary introduction">
-        <img src={heroBanner} alt="Find what calls to you and discover creations made with passion." />
-      </section>
 
       <section className="home-market-section" aria-labelledby="trending-heading">
         <div className="home-section-heading">

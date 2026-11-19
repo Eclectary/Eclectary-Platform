@@ -1,14 +1,16 @@
 require "uri"
 
 module FrontendOrigins
-  LOCAL_DEVELOPMENT_ORIGIN = "http://localhost:5173"
+  LOCAL_DEVELOPMENT_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+  ].freeze
 
   module_function
 
   def resolve(environment:, configured_origin:)
     origins = []
-    origins << LOCAL_DEVELOPMENT_ORIGIN if environment.development? || environment.test?
-
+    origins.concat(LOCAL_DEVELOPMENT_ORIGINS) if environment.development? || environment.test?
     configured_origin = configured_origin.to_s.strip
     origins << normalize(configured_origin) unless configured_origin.empty?
     origins.uniq.freeze
