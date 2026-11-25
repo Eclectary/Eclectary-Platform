@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import customPrinting from '../assets/images/custom-printing.png';
-import digitalCreations from '../assets/images/digital-creations.png';
-import purelyHandmade from '../assets/images/purely-handmade.png';
+import customPrinting from '../assets/images/CustomPrintingBadgev2.png';
+import digitalCreations from '../assets/images/DigitalCreationsBadgev2.png';
+import purelyHandmade from '../assets/images/PurelyHandmadeBadev2.png';
 import heroBanner from '../assets/images/eclectary hero banner.png';
 import logo from '../assets/images/eclectary logo nb.png';
 import SellerCard from '../components/SellerCard';
