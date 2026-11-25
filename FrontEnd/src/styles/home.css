@@ -336,17 +336,16 @@
 
 .legacy-category-banner {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px) minmax(0, 1fr);
   align-items: center;
-  column-gap: 45px;
+  column-gap: 8px;
 
-  width: min(calc(100% - 40px), 1300px);
+  width: min(calc(100% - 40px), 1200px);
   aspect-ratio: 2.9 / 1;
 
-  margin: -190px auto 0;
+  margin: -120px auto 0;
   position: relative;
   z-index: 1;
-
   background: transparent;
 }
 
@@ -364,7 +363,27 @@
   aspect-ratio: 3 / 2;
   object-fit: contain;
 }
+/* Enlarge Custom Printing and Digital Creations */
+.legacy-category-banner a:first-child img,
+.legacy-category-banner a:last-child img {
+  width: 122%;
+  max-width: none;
+}
 
+/* Move Custom Printing closer to center */
+.legacy-category-banner a:first-child {
+  transform: translateX(55px);
+}
+
+/* Move Digital Creations closer to center */
+.legacy-category-banner a:last-child {
+  transform: translateX(-55px);
+}
+
+/* Keep Purely Handmade at its current size */
+.legacy-category-banner a:nth-child(2) img {
+  width: 100%;
+}
 .legacy-category-banner a { background: transparent; }
 
 .legacy-category-banner img {
@@ -397,7 +416,7 @@
   column-gap: 24px;
   width: 100%;
   margin: 0 auto;
-  padding: 16px 150px 0px;
+  padding: 22px 150px 10px;
   background: transparent;
   border-bottom: 1px solid rgba(88, 23, 76, 0.12);
   position: relative;
@@ -565,7 +584,7 @@
   width: 100%;
   height: 420px;
   object-fit: cover;
-  object-position: center;
+  object-position: center 30%;
 }
 
 .home-feedback-banner {
@@ -749,8 +768,8 @@
 .legacy-home .makers-section {
   width: var(--legacy-rail-width);
   box-sizing: border-box;
-  margin: 0 auto;
-  padding: 48px 28px 40px;  
+  margin: 45px auto 0;
+  padding: 24px 28px 20px;  
   border-radius: 18px;
   background: #F3EFE5;}
 
@@ -769,32 +788,53 @@
   justify-content: center;
   align-items: stretch;
   gap: 20px;
-  padding: 10px;
+  padding: 0px;
 }
 
-.makers-grid .seller-card { min-width: 0; }
+.makers-grid .seller-card {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
 
 .makers-footer {
-  margin-top: 18px;
+  margin-top: 20px;
   text-align: center;
 }
 .makers-footer a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 24px;
-  border: 1px solid #58174C;
+  padding: 11px 30px;
+
+  border: 0;
   border-radius: 999px;
-  background: rgba(255, 252, 247, 0.8);
-  color: #58174C;
+
+  background: linear-gradient(
+    110deg,
+    #651B3E 0%,
+    #611338 50%,
+    #6C1F40 100%
+  );
+
+  color: #FFFFFF;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   text-decoration: none;
 }
 
 .makers-footer a:hover,
-.makers-footer a:focus-visible { color: #A14D76; }
+.makers-footer a:focus-visible {
+  background: linear-gradient(
+    110deg,
+    #76264D 0%,
+    #702047 50%,
+    #853054 100%
+  );
+  color: #FFFFFF;
+}
 
 @media (max-width: 900px) {
   .legacy-home {
@@ -901,7 +941,7 @@
   .legacy-search-icon { margin-right: 8px; font-size: 17px; }
   .legacy-home .makers-section {
     width: var(--legacy-rail-width);
-    padding: 28px 12px 34px;
+    padding: 30px 24px 28px;
   }
   .makers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0; }
 
@@ -980,8 +1020,8 @@
 }
 
 .legacy-home .makers-grid .seller-card__content {
-  padding: 20px;
-  gap: 10px;
+  padding: 16px;
+  gap: 8px;
 }
 
 .legacy-home .makers-grid .seller-card__name {
@@ -1008,7 +1048,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 22px;
+  padding: 9px 30px;
   border: 0;
   border-radius: 999px;
   background: linear-gradient(
@@ -1142,7 +1182,7 @@
 
 .home-discovery-search {
   width: var(--legacy-rail-width);
-  margin: -8px auto 32px;
+  margin: -25px auto 32px;
   text-align: center;
 }
 

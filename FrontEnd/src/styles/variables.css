@@ -48,6 +48,27 @@
   --neutral-800: #2d2d2d;
   --neutral-900: #1b1b1b;
 
+/* Updated Eclectary theme */
+--page-ivory: #FFF9F1;
+--page-champagne: #FCF3E7;
+--card-cream: #F8F3EA;
+--brand-plum: #58174C;
+
+/* Shared button gradients */
+--button-gradient: linear-gradient(
+  110deg,
+  #651B3E 0%,
+  #611338 50%,
+  #6C1F40 100%
+);
+
+--button-gradient-hover: linear-gradient(
+  110deg,
+  #76264D 0%,
+  #702047 50%,
+  #853054 100%
+);
+  
   /* Brand aliases */
   --bg: var(--beige-100);
   --surface: var(--neutral-0);
