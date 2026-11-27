@@ -347,17 +347,33 @@ function Shop() {
     });
   }, [collection, searchTerm, sellers]);
 
+  
   return (
     <div className="shop-page">
       {collectionName && (
-        <section className="shop-collection-nav" aria-label={`${collectionName} collection navigation`}>
-          <div className="shop-collection-nav__bottom" aria-label={`${collectionName} quick navigation`}>
-            <Link className="shop-collection-nav__brand" to="/" aria-label="Eclectary home">
+        <section
+          className="shop-collection-nav"
+          aria-label={`${collectionName} collection navigation`}
+        >
+          <div
+            className="shop-collection-nav__bottom"
+            aria-label={`${collectionName} quick navigation`}
+          >
+            <Link
+              className="shop-collection-nav__brand"
+              to="/"
+              aria-label="Eclectary home"
+            >
               <img src={logo} alt="Eclectary" />
             </Link>
 
             <label className="shop-collection-nav__search">
-              <span className="shop-collection-nav__search-icon" aria-hidden="true">✦</span>
+              <span
+                className="shop-collection-nav__search-icon"
+                aria-hidden="true"
+              >
+                ✦
+              </span>
               <input
                 type="search"
                 value={searchTerm}
@@ -369,16 +385,6 @@ function Shop() {
 
             <div className="shop-collection-nav__actions">
               <Link
-                to={`/shop?collection=${collection}`}
-                className="shop-collection-nav__action shop-collection-nav__action--collection"
-                title={`Explore ${collectionName}`}
-                aria-label={`Explore ${collectionName}`}
-              >
-                <span aria-hidden="true">✶</span>
-                <span>{collectionName}</span>
-              </Link>
-
-              <Link
                 to={isLoggedIn ? '/account/profile' : '/account/login'}
                 className="shop-collection-nav__action"
                 title={isLoggedIn ? 'Profile' : 'Login'}
@@ -389,18 +395,109 @@ function Shop() {
               </Link>
 
               {isLoggedIn && (
-                <Link to="/favorites" className="shop-collection-nav__action" title="Favorites" aria-label="Favorites">
+                <Link
+                  to="/favorites"
+                  className="shop-collection-nav__action"
+                  title="Favorites"
+                  aria-label="Favorites"
+                >
                   <span aria-hidden="true">♡</span>
                   <span>Favorites</span>
                 </Link>
               )}
 
-              <Link to="/cart" className="shop-collection-nav__action" title="Cart" aria-label="Cart">
+              <Link
+                to="/cart"
+                className="shop-collection-nav__action"
+                title="Cart"
+                aria-label="Cart"
+              >
                 <span aria-hidden="true">🛒</span>
                 <span>{totalItems > 0 ? `Cart (${totalItems})` : 'Cart'}</span>
               </Link>
             </div>
           </div>
+
+          <nav
+            className="shop-department-links"
+            aria-label={`${collectionName} navigation`}
+          >
+            <div className="shop-department-links__featured">
+              <details className="shop-categories-menu">
+                <summary className="shop-collection-nav__action">
+                  <span
+                    className="shop-categories-icon"
+                    aria-hidden="true"
+                  >
+                    ☰
+                  </span>
+                  Categories
+                </summary>
+
+                <div className="shop-categories-menu__panel">
+                  <button
+                    type="button"
+                    onClick={() => selectCategory('')}
+                  >
+                    All Categories
+                  </button>
+
+                  {departmentCategories.map((item) => (
+                    <details
+                      key={item.id}
+                      className="shop-category-group"
+                    >
+                      <summary>{item.name}</summary>
+
+                      <div className="shop-category-group__children">
+                        <button
+                          type="button"
+                          onClick={() => selectCategory(item.id)}
+                        >
+                          View All
+                        </button>
+
+                        {item.childSubcategories?.map((child) => (
+                          <button
+                            key={child}
+                            type="button"
+                            onClick={() =>
+                              selectCategory(item.id, child)
+                            }
+                          >
+                            {child}
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </details>
+
+              <span className="shop-department-links__item shop-department-links__item--featured">
+                Top Sellers
+              </span>
+
+              <span className="shop-department-links__item shop-department-links__item--featured">
+                Specials
+              </span>
+            </div>
+
+            <div className="shop-department-links__categories">
+              {departmentCategories.slice(0, 5).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`shop-department-links__item${
+                    activeCategory === item.id ? ' is-active' : ''
+                  }`}
+                  onClick={() => selectCategory(item.id)}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </nav>
         </section>
       )}
 

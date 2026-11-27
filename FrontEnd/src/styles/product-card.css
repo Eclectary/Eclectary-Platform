@@ -167,9 +167,9 @@
 
 .product-card__price {
   color: #58174C;
-  font-family: var(--font-heading);
+  font-family: 'Lora', serif;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .product-card__cta {
